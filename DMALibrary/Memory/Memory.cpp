@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Memory.h"
 
+#include <iostream>
+
 Memory::Memory()
 {
 	LOG("loading libraries...\n");
@@ -424,16 +426,17 @@ bool Memory::FixCr3()
 	std::string lines(reinterpret_cast<char*>(bytes.get()));
 	std::istringstream iss(lines);
 	std::string line;
+	printf("%s\n", lines.c_str());
 	while (std::getline(iss, line))
 	{
 		Info info = { };
 
 		std::istringstream info_ss(line);
-		if (info_ss >> info.index >> info.process_id >> info.dtb >> info.kernelAddr >> info.name)
+		if (info_ss >> std::hex >> info.index >> std::dec >> info.process_id >> std::hex >> info.dtb >> info.kernelAddr >> info.name)
 		{
 			if (info.process_id == 0) //parts that lack a name or have a NULL pid are suspects
 				possible_dtbs.push_back(info.dtb);
-			if (info.name.find(this->current_process.process_name))
+			if (this->current_process.process_name.find(info.name) != std::string::npos)
 				possible_dtbs.push_back(info.dtb);
 		}
 	}
