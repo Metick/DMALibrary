@@ -221,18 +221,20 @@ std::vector<int> Memory::GetPidListFromName(std::string name)
 	PVMMDLL_PROCESS_INFORMATION process_info = NULL;
 	DWORD total_processes = 0;
 	std::vector<int> list = { };
-	if (VMMDLL_ProcessGetInformationAll(this->vHandle, &process_info, &total_processes))
+	bool result = VMMDLL_ProcessGetInformationAll(this->vHandle, &process_info, &total_processes);
+	if (!result)
 	{
-		for (size_t i = 0; i < total_processes; i++)
-		{
-			auto process = process_info[i];
-			if (strstr(process.szNameLong, name.c_str()))
-			{
-				list.push_back(process.dwPID);
-			}
-		}
+		LOG("[!] Failed to get process list\n");
 		return list;
 	}
+
+	for (size_t i = 0; i < total_processes; i++)
+	{
+		auto process = process_info[i];
+		if (strstr(process.szNameLong, name.c_str()))
+			list.push_back(process.dwPID);
+	}
+
 	return list;
 }
 
@@ -241,13 +243,16 @@ std::vector<std::string> Memory::GetModuleList(std::string process_name)
 	std::vector<std::string> list = { };
 	PVMMDLL_MAP_MODULE module_info;
 	auto bResult = VMMDLL_Map_GetModuleU(this->vHandle, this->current_process.PID, &module_info, VMMDLL_MODULE_FLAG_NORMAL);
-	if (bResult)
+	if (!bResult)
 	{
-		for (size_t i = 0; i < module_info->cMap; i++)
-		{
-			auto module = module_info->pMap[i];
-			list.push_back(module.uszText);
-		}
+		LOG("[!] Failed to get module list\n");
+		return list;
+	}
+
+	for (size_t i = 0; i < module_info->cMap; i++)
+	{
+		auto module = module_info->pMap[i];
+		list.push_back(module.uszText);
 	}
 
 	return list;
@@ -279,6 +284,7 @@ size_t Memory::GetBaseSize(std::string module_name)
 		LOG("[+] Found Base Size for %s at 0x%p\n", module_name.c_str(), module_info->cbImageSize);
 		return module_info->cbImageSize;
 	}
+	return 0;
 }
 
 uintptr_t Memory::GetExportTableAddress(std::string import, std::string process, std::string module)
@@ -287,12 +293,15 @@ uintptr_t Memory::GetExportTableAddress(std::string import, std::string process,
 	PVMMDLL_MAP_EATENTRY export_entry;
 	bool result = VMMDLL_Map_GetEATU(mem.vHandle, mem.GetPidFromName(process) /*| VMMDLL_PID_PROCESS_WITH_KERNELMEMORY*/, (LPSTR)module.c_str(), &eat_map);
 	if (!result)
+	{
+		LOG("[!] Failed to get Export Table\n");
 		return 0;
-
+	}
 	if (eat_map->dwVersion != VMMDLL_MAP_EAT_VERSION)
 	{
 		VMMDLL_MemFree(eat_map);
 		eat_map = NULL;
+		LOG("[!] Invalid VMM Map Version\n");
 		return 0;
 	}
 
@@ -319,12 +328,16 @@ uintptr_t Memory::GetImportTableAddress(std::string import, std::string process,
 	PVMMDLL_MAP_IATENTRY import_entry;
 	bool result = VMMDLL_Map_GetIATU(mem.vHandle, mem.GetPidFromName(process) /*| VMMDLL_PID_PROCESS_WITH_KERNELMEMORY*/, (LPSTR)module.c_str(), &iat_map);
 	if (!result)
+	{
+		LOG("[!] Failed to get Import Table\n");
 		return 0;
+	}
 
 	if (iat_map->dwVersion != VMMDLL_MAP_IAT_VERSION)
 	{
 		VMMDLL_MemFree(iat_map);
 		iat_map = NULL;
+		LOG("[!] Invalid VMM Map Version\n");
 		return 0;
 	}
 
@@ -704,16 +717,15 @@ void Memory::AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t addre
 
 void Memory::ExecuteReadScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
 {
-	int PID = pid;
-	if (PID == 0)
-		PID = this->current_process.PID;
+	if (pid == 0)
+		pid = this->current_process.PID;
 
 	if (!VMMDLL_Scatter_ExecuteRead(handle))
 	{
 		LOG("[-] Failed to Execute Scatter Read\n");
 	}
 	//Clear after using it
-	if (!VMMDLL_Scatter_Clear(handle, PID, NULL))
+	if (!VMMDLL_Scatter_Clear(handle, pid, NULL))
 	{
 		LOG("[-] Failed to clear Scatter\n");
 	}
@@ -721,16 +733,15 @@ void Memory::ExecuteReadScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
 
 void Memory::ExecuteWriteScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
 {
-	int PID = pid;
-	if (PID == 0)
-		PID = this->current_process.PID;
+	if (pid == 0)
+		pid = this->current_process.PID;
 
 	if (!VMMDLL_Scatter_Execute(handle))
 	{
 		LOG("[-] Failed to Execute Scatter Read\n");
 	}
 	//Clear after using it
-	if (!VMMDLL_Scatter_Clear(handle, PID, NULL))
+	if (!VMMDLL_Scatter_Clear(handle, pid, NULL))
 	{
 		LOG("[-] Failed to clear Scatter\n");
 	}
