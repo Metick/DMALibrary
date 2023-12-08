@@ -47,5 +47,5 @@ public:
 	{
 	}
 
-	char* QueryValue(const char* path, e_registry_type type);
+	std::string QueryValue(const char* path, e_registry_type type);
 };

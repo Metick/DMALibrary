@@ -82,32 +82,24 @@ unsigned char abort2[4] = {0x10, 0x00, 0x10, 0x00};
 
 bool Memory::SetFPGA()
 {
-	bool bResult;
+	bool result;
 	ULONG64 qwID, qwVersionMajor, qwVersionMinor;
-	bResult = VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_FPGA_ID, &qwID) && VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_VERSION_MAJOR, &qwVersionMajor) && VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_VERSION_MINOR, &qwVersionMinor);
-	if (bResult)
+	if (VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_FPGA_ID, &qwID) && VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_VERSION_MAJOR, &qwVersionMajor) && VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_VERSION_MINOR, &qwVersionMinor))
 	{
-		if (bResult)
-		{
-			LOG("[+] VMMDLL_ConfigGet");
-			LOG(" ID = %lli", qwID);
-			LOG(" VERSION = %lli.%lli\n", qwVersionMajor, qwVersionMinor);
-		}
-		else
-		{
-			LOG("[!] Failed to VMMDLL_ConfigGet\n");
-			return false;
-		}
+		LOG("[+] VMMDLL_ConfigGet");
+		LOG(" ID = %lli", qwID);
+		LOG(" VERSION = %lli.%lli\n", qwVersionMajor, qwVersionMinor);
+
 		if ((qwVersionMajor >= 4) && ((qwVersionMajor >= 5) || (qwVersionMinor >= 7)))
 		{
-			HANDLE hLC;
-			LC_CONFIG LcConfig = {.dwVersion = LC_CONFIG_VERSION, .szDevice = "existing"};
-			hLC = LcCreate(&LcConfig);
-			if (hLC)
+			HANDLE handle;
+			LC_CONFIG config = {.dwVersion = LC_CONFIG_VERSION, .szDevice = "existing"};
+			handle = LcCreate(&config);
+			if (handle)
 			{
-				LcCommand(hLC, LC_CMD_FPGA_CFGREGPCIE_MARKWR | 0x002, 4, (PBYTE)&abort2, NULL, NULL);
+				LcCommand(handle, LC_CMD_FPGA_CFGREGPCIE_MARKWR | 0x002, 4, (PBYTE)&abort2, NULL, NULL);
 				LOG("[-] Register auto cleared\n");
-				LcClose(hLC);
+				LcClose(handle);
 			}
 		}
 	}
@@ -188,6 +180,7 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 			VMMDLL_Close(this->vHandle);
 			return false;
 		}
+
 		this->current_process.base_address = GetBaseDaddy(process_name);
 		if (!this->current_process.base_address)
 		{
@@ -195,6 +188,7 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 			VMMDLL_Close(this->vHandle);
 			return false;
 		}
+
 		this->current_process.base_size = GetBaseSize(process_name);
 		if (!this->current_process.base_size)
 		{
@@ -202,6 +196,7 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 			VMMDLL_Close(this->vHandle);
 			return false;
 		}
+
 		this->current_process.process_name = process_name;
 
 		LOG("Process information of %s\n", process_name.c_str());
@@ -223,14 +218,14 @@ DWORD Memory::GetPidFromName(std::string process_name)
 
 std::vector<int> Memory::GetPidListFromName(std::string name)
 {
-	PVMMDLL_PROCESS_INFORMATION pProcInfo = NULL;
+	PVMMDLL_PROCESS_INFORMATION process_info = NULL;
 	DWORD total_processes = 0;
 	std::vector<int> list = { };
-	if (VMMDLL_ProcessGetInformationAll(this->vHandle, &pProcInfo, &total_processes))
+	if (VMMDLL_ProcessGetInformationAll(this->vHandle, &process_info, &total_processes))
 	{
 		for (size_t i = 0; i < total_processes; i++)
 		{
-			auto process = pProcInfo[i];
+			auto process = process_info[i];
 			if (strstr(process.szNameLong, name.c_str()))
 			{
 				list.push_back(process.dwPID);
@@ -244,13 +239,13 @@ std::vector<int> Memory::GetPidListFromName(std::string name)
 std::vector<std::string> Memory::GetModuleList(std::string process_name)
 {
 	std::vector<std::string> list = { };
-	PVMMDLL_MAP_MODULE pModuleEntryExplorer;
-	auto bResult = VMMDLL_Map_GetModuleU(this->vHandle, this->current_process.PID, &pModuleEntryExplorer, VMMDLL_MODULE_FLAG_NORMAL);
+	PVMMDLL_MAP_MODULE module_info;
+	auto bResult = VMMDLL_Map_GetModuleU(this->vHandle, this->current_process.PID, &module_info, VMMDLL_MODULE_FLAG_NORMAL);
 	if (bResult)
 	{
-		for (size_t i = 0; i < pModuleEntryExplorer->cMap; i++)
+		for (size_t i = 0; i < module_info->cMap; i++)
 		{
-			auto module = pModuleEntryExplorer->pMap[i];
+			auto module = module_info->pMap[i];
 			list.push_back(module.uszText);
 		}
 	}
@@ -262,12 +257,12 @@ size_t Memory::GetBaseDaddy(std::string module_name)
 {
 	std::wstring str(module_name.begin(), module_name.end());
 
-	PVMMDLL_MAP_MODULEENTRY pModuleEntryExplorer;
-	auto bResult = VMMDLL_Map_GetModuleFromNameW(this->vHandle, this->current_process.PID, (LPWSTR)str.c_str(), &pModuleEntryExplorer, VMMDLL_MODULE_FLAG_NORMAL);
+	PVMMDLL_MAP_MODULEENTRY module_info;
+	auto bResult = VMMDLL_Map_GetModuleFromNameW(this->vHandle, this->current_process.PID, (LPWSTR)str.c_str(), &module_info, VMMDLL_MODULE_FLAG_NORMAL);
 	if (bResult)
 	{
-		LOG("[+] Found Base Address for %s at 0x%p\n", module_name.c_str(), pModuleEntryExplorer->vaBase);
-		return pModuleEntryExplorer->vaBase;
+		LOG("[+] Found Base Address for %s at 0x%p\n", module_name.c_str(), module_info->vaBase);
+		return module_info->vaBase;
 	}
 	LOG("[!] Couldn't find Base Address for %s\n", module_name.c_str());
 	return 0;
@@ -277,12 +272,12 @@ size_t Memory::GetBaseSize(std::string module_name)
 {
 	std::wstring str(module_name.begin(), module_name.end());
 
-	PVMMDLL_MAP_MODULEENTRY pModuleEntryExplorer;
-	auto bResult = VMMDLL_Map_GetModuleFromNameW(this->vHandle, this->current_process.PID, (LPWSTR)str.c_str(), &pModuleEntryExplorer, VMMDLL_MODULE_FLAG_NORMAL);
+	PVMMDLL_MAP_MODULEENTRY module_info;
+	auto bResult = VMMDLL_Map_GetModuleFromNameW(this->vHandle, this->current_process.PID, (LPWSTR)str.c_str(), &module_info, VMMDLL_MODULE_FLAG_NORMAL);
 	if (bResult)
 	{
-		LOG("[+] Found Base Size for %s at 0x%p\n", module_name.c_str(), pModuleEntryExplorer->cbImageSize);
-		return pModuleEntryExplorer->cbImageSize;
+		LOG("[+] Found Base Size for %s at 0x%p\n", module_name.c_str(), module_info->cbImageSize);
+		return module_info->cbImageSize;
 	}
 }
 
@@ -369,10 +364,11 @@ struct Info
 
 bool Memory::FixCr3()
 {
-	PVMMDLL_MAP_MODULEENTRY moduleEntry;
-	bool result = VMMDLL_Map_GetModuleFromNameU(this->vHandle, this->current_process.PID, (LPSTR)this->current_process.process_name.c_str(), &moduleEntry, NULL);
+	bool result;
+	PVMMDLL_MAP_MODULEENTRY module_entry;
+	/*bool result = VMMDLL_Map_GetModuleFromNameU(this->vHandle, this->current_process.PID, (LPSTR)this->current_process.process_name.c_str(), &module_entry, NULL);
 	if (result)
-		return true; //Doesn't need to be patched lol
+		return true; //Doesn't need to be patched lol*/
 
 	if (!VMMDLL_InitializePlugins(this->vHandle))
 	{
@@ -406,53 +402,44 @@ bool Memory::FixCr3()
 
 	//read the data from the txt and parse it
 	const size_t buffer_size = cbSize;
-	BYTE* bytes = new BYTE[buffer_size];
+	std::unique_ptr<BYTE[]> bytes(new BYTE[buffer_size]);
 	DWORD j = 0;
-	auto nt = VMMDLL_VfsReadW(this->vHandle, (LPWSTR)L"\\misc\\procinfo\\dtb.txt", bytes, buffer_size - 1, &j, 0);
+	auto nt = VMMDLL_VfsReadW(this->vHandle, (LPWSTR)L"\\misc\\procinfo\\dtb.txt", bytes.get(), buffer_size - 1, &j, 0);
 	if (nt != VMMDLL_STATUS_SUCCESS)
-	{
-		delete[] bytes;
 		return false;
-	}
 
-	std::vector<uint64_t> possibleDTBs;
-	char* pLineStart = reinterpret_cast<char*>(bytes);
-	for (size_t i = 0; i < 1000; ++i)
+	std::vector<uint64_t> possible_dtbs;
+	std::string lines(reinterpret_cast<char*>(bytes.get()));
+	std::istringstream iss(lines);
+	std::string line;
+	while (std::getline(iss, line))
 	{
-		//Loop over it 1000 times, assumign they'll never have more than 1k processes ran at the same time
-		char* pLineEnd = strchr(pLineStart, '\n');
-		if (pLineEnd == nullptr)
-			break;
-
-		*pLineEnd = '\0';
-
 		Info info = { };
 
-		int numFields = sscanf(pLineStart, "%X %X %llX %llx %s", &info.index, &info.process_id, &info.dtb, &info.kernelAddr, &info.name);
-		//printf("%X %X %llX %llx %s\n", info.index, info.process_id, info.dtb, info.kernelAddr, info.name);
-		if (info.process_id == 0) //parts that lack a name or have a NULL pid are suspects
-			possibleDTBs.push_back(info.dtb);
-		if (strstr(info.name.c_str(), this->current_process.process_name.c_str()))
-			possibleDTBs.push_back(info.dtb);
-
-		pLineStart = pLineEnd + 1;
+		std::istringstream info_ss(line);
+		if (info_ss >> info.index >> info.process_id >> info.dtb >> info.kernelAddr >> info.name)
+		{
+			printf("index: %i, pid: %i, dtb: %llx, kernelAddr: %llx, name: %s\n", info.index, info.process_id, info.dtb, info.kernelAddr, info.name.c_str());
+			if (info.process_id == 0) //parts that lack a name or have a NULL pid are suspects
+				possible_dtbs.push_back(info.dtb);
+			if (info.name.find(this->current_process.process_name))
+				possible_dtbs.push_back(info.dtb);
+		}
 	}
 
 	//loop over possible dtbs and set the config to use it til we find the correct one
-	for (size_t i = 0; i < possibleDTBs.size(); i++)
+	for (size_t i = 0; i < possible_dtbs.size(); i++)
 	{
-		auto dtb = possibleDTBs[i];
+		auto dtb = possible_dtbs[i];
 		VMMDLL_ConfigSet(this->vHandle, VMMDLL_OPT_PROCESS_DTB | this->current_process.PID, dtb);
-		result = VMMDLL_Map_GetModuleFromNameU(this->vHandle, this->current_process.PID, (LPSTR)this->current_process.process_name.c_str(), &moduleEntry, NULL);
+		result = VMMDLL_Map_GetModuleFromNameU(this->vHandle, this->current_process.PID, (LPSTR)this->current_process.process_name.c_str(), &module_entry, NULL);
 		if (result)
 		{
 			LOG("[+] Patched DTB\n");
-			delete[] bytes;
 			return true;
 		}
 	}
 
-	delete[] bytes;
 	LOG("[-] Failed to patch module\n");
 	return false;
 }

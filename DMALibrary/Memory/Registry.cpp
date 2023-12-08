@@ -2,17 +2,17 @@
 #include "Registry.h"
 #include "Memory.h"
 
-char* c_registry::QueryValue(const char* path, e_registry_type type)
+std::string c_registry::QueryValue(const char* path, e_registry_type type)
 {
-	static BYTE buffer[0x128];
-	static bool result;
+	BYTE buffer[0x128];
 	DWORD _type = (DWORD)type;
 	DWORD size = sizeof(buffer);
-	result = VMMDLL_WinReg_QueryValueExU(mem.vHandle, CC_TO_LPSTR(path), &_type, buffer, &size);
+	bool result = VMMDLL_WinReg_QueryValueExU(mem.vHandle, CC_TO_LPSTR(path), &_type, buffer, &size);
 	if (!result)
 	{
 		LOG("[!] failed QueryValueExU call\n");
 		return nullptr;
 	}
-	return const_cast<char*>(LPWSTR_TO_CC((LPWSTR)buffer));
+	std::wstring wstr = std::wstring((wchar_t*)buffer);
+	return std::string(wstr.begin(), wstr.end());
 }

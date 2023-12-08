@@ -23,12 +23,16 @@ int main()
 	//example keyboard usage.
 	//mem.GetKeyboard().IsKeyDown(VK_F5);
 
-	auto all_modules = mem.GetModuleList("explorer.exe");
+	if (!mem.FixCr3())
+		std::cout << "Failed to fix CR3" << std::endl;
+	else
+		std::cout << "CR3 fixed" << std::endl;
+	/*auto all_modules = mem.GetModuleList("explorer.exe");
 	std::cout << "Explorer.exe Modules: " << std::endl;
 	for (size_t i = 0; i < all_modules.size(); i++)
 	{
 		std::cout << "Module: " << all_modules[i] << std::endl;
-	}
+	}*/
 
 	std::cout << "Hello World!\n";
 	//pause();
