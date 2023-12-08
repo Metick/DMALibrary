@@ -35,47 +35,47 @@ bool Memory::DumpMemoryMap(bool debug)
 		args[argc++] = (LPSTR)"-printf";
 	}
 	VMM_HANDLE handle = VMMDLL_Initialize(argc, args);
-	if (handle)
+	if (!handle)
 	{
-		PVMMDLL_MAP_PHYSMEM pPhysMemMap = NULL;
-		auto bResult = VMMDLL_Map_GetPhysMem(handle, &pPhysMemMap);
-		if (bResult)
-		{
-			if (pPhysMemMap->dwVersion != VMMDLL_MAP_PHYSMEM_VERSION)
-			{
-				LOG("[!] Invalid VMM Map Version\n");
-				VMMDLL_MemFree(pPhysMemMap);
-				VMMDLL_Close(handle);
-				return false;
-			}
-
-			if (pPhysMemMap->cMap == 0)
-			{
-				printf("[!] Failed to get physical memory map\n");
-				VMMDLL_MemFree(pPhysMemMap);
-				VMMDLL_Close(handle);
-				return false;
-			}
-			//Dump map to file
-			std::stringstream sb;
-			for (DWORD i = 0; i < pPhysMemMap->cMap; i++)
-			{
-				sb << std::setfill('0') << std::setw(4) << i << "  " << std::hex << pPhysMemMap->pMap[i].pa << "  -  " << (pPhysMemMap->pMap[i].pa + pPhysMemMap->pMap[i].cb - 1) << "  ->  " << pPhysMemMap->pMap[i].pa << std::endl;
-			}
-			auto temp_path = std::filesystem::temp_directory_path();
-			std::ofstream nFile(temp_path.string() + "\\mmap.txt");
-			nFile << sb.str();
-			nFile.close();
-
-			VMMDLL_MemFree(pPhysMemMap);
-			LOG("Successfully dumped memory map to file!\n");
-			//Little sleep to make sure it's written to file.
-			Sleep(3000);
-		}
-		VMMDLL_Close(handle);
-		return true;
+		LOG("[!] Failed to open a VMM Handle\n");
+		return false;
 	}
-	return false;
+	PVMMDLL_MAP_PHYSMEM pPhysMemMap = NULL;
+	if (VMMDLL_Map_GetPhysMem(handle, &pPhysMemMap))
+	{
+		if (pPhysMemMap->dwVersion != VMMDLL_MAP_PHYSMEM_VERSION)
+		{
+			LOG("[!] Invalid VMM Map Version\n");
+			VMMDLL_MemFree(pPhysMemMap);
+			VMMDLL_Close(handle);
+			return false;
+		}
+
+		if (pPhysMemMap->cMap == 0)
+		{
+			printf("[!] Failed to get physical memory map\n");
+			VMMDLL_MemFree(pPhysMemMap);
+			VMMDLL_Close(handle);
+			return false;
+		}
+		//Dump map to file
+		std::stringstream sb;
+		for (DWORD i = 0; i < pPhysMemMap->cMap; i++)
+		{
+			sb << std::setfill('0') << std::setw(4) << i << "  " << std::hex << pPhysMemMap->pMap[i].pa << "  -  " << (pPhysMemMap->pMap[i].pa + pPhysMemMap->pMap[i].cb - 1) << "  ->  " << pPhysMemMap->pMap[i].pa << std::endl;
+		}
+		auto temp_path = std::filesystem::temp_directory_path();
+		std::ofstream nFile(temp_path.string() + "\\mmap.txt");
+		nFile << sb.str();
+		nFile.close();
+
+		VMMDLL_MemFree(pPhysMemMap);
+		LOG("Successfully dumped memory map to file!\n");
+		//Little sleep to make sure it's written to file.
+		Sleep(3000);
+	}
+	VMMDLL_Close(handle);
+	return true;
 }
 
 unsigned char abort2[4] = {0x10, 0x00, 0x10, 0x00};
