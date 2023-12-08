@@ -1,4 +1,4 @@
-# PhantomLib
+# DMALibrary
 Simple but extensive library for DMA users
 
 Supports
