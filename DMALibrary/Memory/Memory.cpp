@@ -364,11 +364,10 @@ struct Info
 
 bool Memory::FixCr3()
 {
-	bool result;
 	PVMMDLL_MAP_MODULEENTRY module_entry;
-	/*bool result = VMMDLL_Map_GetModuleFromNameU(this->vHandle, this->current_process.PID, (LPSTR)this->current_process.process_name.c_str(), &module_entry, NULL);
+	bool result = VMMDLL_Map_GetModuleFromNameU(this->vHandle, this->current_process.PID, (LPSTR)this->current_process.process_name.c_str(), &module_entry, NULL);
 	if (result)
-		return true; //Doesn't need to be patched lol*/
+		return true; //Doesn't need to be patched lol
 
 	if (!VMMDLL_InitializePlugins(this->vHandle))
 	{
