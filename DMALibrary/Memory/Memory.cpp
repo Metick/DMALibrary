@@ -418,7 +418,6 @@ bool Memory::FixCr3()
 		std::istringstream info_ss(line);
 		if (info_ss >> info.index >> info.process_id >> info.dtb >> info.kernelAddr >> info.name)
 		{
-			printf("index: %i, pid: %i, dtb: %llx, kernelAddr: %llx, name: %s\n", info.index, info.process_id, info.dtb, info.kernelAddr, info.name.c_str());
 			if (info.process_id == 0) //parts that lack a name or have a NULL pid are suspects
 				possible_dtbs.push_back(info.dtb);
 			if (info.name.find(this->current_process.process_name))
