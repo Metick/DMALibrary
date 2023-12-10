@@ -33,6 +33,9 @@
     <ClInclude Include="Memory\Shellcode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="nt\structs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DMALibrary.cpp">

@@ -156,6 +156,7 @@
     <ClInclude Include="Memory\Memory.h" />
     <ClInclude Include="Memory\Registry.h" />
     <ClInclude Include="Memory\Shellcode.h" />
+    <ClInclude Include="nt\structs.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>

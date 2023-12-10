@@ -3,6 +3,7 @@
 #include "InputManager.h"
 #include "Registry.h"
 #include "Shellcode.h"
+#include "../nt/structs.h"
 
 class Memory
 {
@@ -109,6 +110,18 @@ public:
 	* \return all the module names of the process 
 	*/
 	std::vector<std::string> GetModuleList(std::string process_name);
+
+	/**
+	* \brief Gets the process information
+	* \return the process information
+	*/
+	VMMDLL_PROCESS_INFORMATION GetProcessInformation();
+
+	/**
+	* \brief Gets the process peb
+	* \return the process peb 
+	*/
+	PEB GetProcessPeb();
 
 	/**
 	* brief Gets the base address of the process

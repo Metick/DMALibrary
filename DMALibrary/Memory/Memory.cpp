@@ -260,6 +260,36 @@ std::vector<std::string> Memory::GetModuleList(std::string process_name)
 	return list;
 }
 
+VMMDLL_PROCESS_INFORMATION Memory::GetProcessInformation()
+{
+	VMMDLL_PROCESS_INFORMATION info;
+	SIZE_T process_information = sizeof(VMMDLL_PROCESS_INFORMATION);
+	ZeroMemory(&info, sizeof(VMMDLL_PROCESS_INFORMATION));
+	info.magic = VMMDLL_PROCESS_INFORMATION_MAGIC;
+	info.wVersion = VMMDLL_PROCESS_INFORMATION_VERSION;
+
+	bool result = VMMDLL_ProcessGetInformation(this->vHandle, this->current_process.PID, &info, &process_information);
+	if (result)
+	{
+		LOG("[+] Found process information\n");
+		return info;
+	}
+	LOG("[!] Failed to find process information\n");
+	return { };
+}
+
+PEB Memory::GetProcessPeb()
+{
+	auto info = GetProcessInformation();
+	if (info.win.vaPEB)
+	{
+		LOG("[+] Found process PEB ptr at 0x%p\n", info.win.vaPEB);
+		return Read<PEB>(info.win.vaPEB);
+	}
+	LOG("[!] Failed to find the processes PEB\n");
+	return { };
+}
+
 size_t Memory::GetBaseDaddy(std::string module_name)
 {
 	std::wstring str(module_name.begin(), module_name.end());
@@ -426,7 +456,7 @@ bool Memory::FixCr3()
 	std::string lines(reinterpret_cast<char*>(bytes.get()));
 	std::istringstream iss(lines);
 	std::string line;
-	printf("%s\n", lines.c_str());
+
 	while (std::getline(iss, line))
 	{
 		Info info = { };
