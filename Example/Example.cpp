@@ -34,6 +34,8 @@ int main()
 		std::cout << "Module: " << all_modules[i] << std::endl;
 	}*/
 
+	mem.DumpMemory(mem.GetBaseDaddy("Discovery.exe"), "C:\\dump.exe");
+
 	std::cout << "Hello World!\n";
 	//pause();
 	Sleep(10000);

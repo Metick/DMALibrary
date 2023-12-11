@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Memory.h"
 
+#include <thread>
 #include <iostream>
 
 Memory::Memory()
@@ -511,34 +512,22 @@ bool Memory::DumpMemory(uintptr_t address, std::string path)
 		return false;
 	}
 	//Shouldn't change ever. so const 
-	const size_t targetSize = nt.OptionalHeader.SizeOfImage;
+	const size_t target_size = nt.OptionalHeader.SizeOfImage;
 	//Crashes if we don't make it a ptr :(
-	auto target = std::unique_ptr<uint8_t[]>(new uint8_t[targetSize]);
+	auto target = std::unique_ptr<uint8_t[]>(new uint8_t[target_size]);
 
 	//Read whole modules memory
-	Read(address, target.get(), targetSize);
-	auto ntHeader = (PIMAGE_NT_HEADERS64)(target.get() + dos.e_lfanew);
+	Read(address, target.get(), target_size);
+	auto nt_header = (PIMAGE_NT_HEADERS64)(target.get() + dos.e_lfanew);
 	auto sections = (PIMAGE_SECTION_HEADER)(target.get() + dos.e_lfanew + FIELD_OFFSET(IMAGE_NT_HEADERS, OptionalHeader) + nt.FileHeader.SizeOfOptionalHeader);
 
-	for (size_t i = 0; i < nt.FileHeader.NumberOfSections; i++)
+	for (size_t i = 0; i < nt.FileHeader.NumberOfSections; i++, sections++)
 	{
-		auto section = sections[i];
-
 		//Rewrite the file offsets to the virtual addresses
-		LOG("[!] Rewriting file offsets at 0x%p size 0x%p\n", section.VirtualAddress, section.Misc.VirtualSize);
-		//Rewrite the base relocations to the ".reloc" section
-		if (!memcmp(section.Name, ".reloc\0\0", 8))
-		{
-			LOG("[!] Rewriting base relocations at 0x%p size 0x%p to .reloc section\n", section.VirtualAddress, section.Misc.VirtualSize);
-			ntHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC] = {
-				section.VirtualAddress,
-				section.Misc.VirtualSize,
-			};
-		}
+		LOG("[!] Rewriting file offsets at 0x%p size 0x%p\n", sections->VirtualAddress, sections->Misc.VirtualSize);
+		sections->PointerToRawData = sections->VirtualAddress;
+		sections->SizeOfRawData = sections->Misc.VirtualSize;
 	}
-
-	//Fix file Alignment
-	ntHeader->OptionalHeader.FileAlignment = 0x200;
 
 	//Find all modules used by this process
 	//auto descriptor = Read<IMAGE_IMPORT_DESCRIPTOR>(address + ntHeader->OptionalHeader.DataDirectory[1].VirtualAddress);
@@ -590,10 +579,10 @@ bool Memory::DumpMemory(uintptr_t address, std::string path)
 
 	//Dump file
 	bool result = false;
-	const auto DumpedFile = CreateFileW(std::wstring(path.begin(), path.end()).c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_COMPRESSED, NULL);
-	if (DumpedFile != INVALID_HANDLE_VALUE)
+	const auto dumped_file = CreateFileW(std::wstring(path.begin(), path.end()).c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_COMPRESSED, NULL);
+	if (dumped_file != INVALID_HANDLE_VALUE)
 	{
-		if (!WriteFile(DumpedFile, target.get(), static_cast<DWORD>(targetSize), NULL, NULL))
+		if (!WriteFile(dumped_file, target.get(), static_cast<DWORD>(target_size), NULL, NULL))
 		{
 			LOG("[!] Failed writing file: %i\n", GetLastError());
 		}
@@ -602,7 +591,7 @@ bool Memory::DumpMemory(uintptr_t address, std::string path)
 			LOG("[+] Successfully dumped memory at %s\n", path.c_str());
 			result = true;
 		}
-		CloseHandle(DumpedFile);
+		CloseHandle(dumped_file);
 	}
 	else
 	{
