@@ -23,6 +23,7 @@ uint64_t c_shellcode::find_codecave(size_t function_size, std::string process_na
 		LOG("[!] Could not retrieve sections #1 for '%s'\n", module.c_str());
 		return 0;
 	}
+
 	PIMAGE_SECTION_HEADER pSections = (PIMAGE_SECTION_HEADER)LocalAlloc(LMEM_ZEROINIT, cSections * sizeof(IMAGE_SECTION_HEADER));
 	if (!pSections || !VMMDLL_ProcessGetSectionsU(mem.vHandle, pid, (LPSTR)module.c_str(), pSections, cSections, &cSections) || !cSections)
 	{
@@ -41,6 +42,7 @@ uint64_t c_shellcode::find_codecave(size_t function_size, std::string process_na
 				break;
 		}
 	}
+
 	if (!codecave)
 	{
 		LOG("[!] Could not find a code cave for '%s'\n", module.c_str());

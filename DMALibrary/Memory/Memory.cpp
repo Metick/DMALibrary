@@ -37,46 +37,53 @@ bool Memory::DumpMemoryMap(bool debug)
 		args[argc++] = (LPSTR)"-v";
 		args[argc++] = (LPSTR)"-printf";
 	}
+
 	VMM_HANDLE handle = VMMDLL_Initialize(argc, args);
 	if (!handle)
 	{
 		LOG("[!] Failed to open a VMM Handle\n");
 		return false;
 	}
+
 	PVMMDLL_MAP_PHYSMEM pPhysMemMap = NULL;
-	if (VMMDLL_Map_GetPhysMem(handle, &pPhysMemMap))
+	if (!VMMDLL_Map_GetPhysMem(handle, &pPhysMemMap))
 	{
-		if (pPhysMemMap->dwVersion != VMMDLL_MAP_PHYSMEM_VERSION)
-		{
-			LOG("[!] Invalid VMM Map Version\n");
-			VMMDLL_MemFree(pPhysMemMap);
-			VMMDLL_Close(handle);
-			return false;
-		}
-
-		if (pPhysMemMap->cMap == 0)
-		{
-			printf("[!] Failed to get physical memory map\n");
-			VMMDLL_MemFree(pPhysMemMap);
-			VMMDLL_Close(handle);
-			return false;
-		}
-		//Dump map to file
-		std::stringstream sb;
-		for (DWORD i = 0; i < pPhysMemMap->cMap; i++)
-		{
-			sb << std::setfill('0') << std::setw(4) << i << "  " << std::hex << pPhysMemMap->pMap[i].pa << "  -  " << (pPhysMemMap->pMap[i].pa + pPhysMemMap->pMap[i].cb - 1) << "  ->  " << pPhysMemMap->pMap[i].pa << std::endl;
-		}
-		auto temp_path = std::filesystem::temp_directory_path();
-		std::ofstream nFile(temp_path.string() + "\\mmap.txt");
-		nFile << sb.str();
-		nFile.close();
-
-		VMMDLL_MemFree(pPhysMemMap);
-		LOG("Successfully dumped memory map to file!\n");
-		//Little sleep to make sure it's written to file.
-		Sleep(3000);
+		LOG("[!] Failed to get physical memory map\n");
+		VMMDLL_Close(handle);
+		return false;
 	}
+
+	if (pPhysMemMap->dwVersion != VMMDLL_MAP_PHYSMEM_VERSION)
+	{
+		LOG("[!] Invalid VMM Map Version\n");
+		VMMDLL_MemFree(pPhysMemMap);
+		VMMDLL_Close(handle);
+		return false;
+	}
+
+	if (pPhysMemMap->cMap == 0)
+	{
+		printf("[!] Failed to get physical memory map\n");
+		VMMDLL_MemFree(pPhysMemMap);
+		VMMDLL_Close(handle);
+		return false;
+	}
+	//Dump map to file
+	std::stringstream sb;
+	for (DWORD i = 0; i < pPhysMemMap->cMap; i++)
+	{
+		sb << std::setfill('0') << std::setw(4) << i << "  " << std::hex << pPhysMemMap->pMap[i].pa << "  -  " << (pPhysMemMap->pMap[i].pa + pPhysMemMap->pMap[i].cb - 1) << "  ->  " << pPhysMemMap->pMap[i].pa << std::endl;
+	}
+
+	auto temp_path = std::filesystem::temp_directory_path();
+	std::ofstream nFile(temp_path.string() + "\\mmap.txt");
+	nFile << sb.str();
+	nFile.close();
+
+	VMMDLL_MemFree(pPhysMemMap);
+	LOG("Successfully dumped memory map to file!\n");
+	//Little sleep to make sure it's written to file.
+	Sleep(3000);
 	VMMDLL_Close(handle);
 	return true;
 }
@@ -87,30 +94,32 @@ bool Memory::SetFPGA()
 {
 	bool result;
 	ULONG64 qwID, qwVersionMajor, qwVersionMinor;
-	if (VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_FPGA_ID, &qwID) && VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_VERSION_MAJOR, &qwVersionMajor) && VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_VERSION_MINOR, &qwVersionMinor))
-	{
-		LOG("[+] VMMDLL_ConfigGet");
-		LOG(" ID = %lli", qwID);
-		LOG(" VERSION = %lli.%lli\n", qwVersionMajor, qwVersionMinor);
-
-		if ((qwVersionMajor >= 4) && ((qwVersionMajor >= 5) || (qwVersionMinor >= 7)))
-		{
-			HANDLE handle;
-			LC_CONFIG config = {.dwVersion = LC_CONFIG_VERSION, .szDevice = "existing"};
-			handle = LcCreate(&config);
-			if (handle)
-			{
-				LcCommand(handle, LC_CMD_FPGA_CFGREGPCIE_MARKWR | 0x002, 4, (PBYTE)&abort2, NULL, NULL);
-				LOG("[-] Register auto cleared\n");
-				LcClose(handle);
-			}
-		}
-	}
-	else
+	if (!VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_FPGA_ID, &qwID) && VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_VERSION_MAJOR, &qwVersionMajor) && VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_VERSION_MINOR, &qwVersionMinor))
 	{
 		LOG("[!] Failed to lookup FPGA device, Attempting to proceed\n\n");
 		return false;
 	}
+
+	LOG("[+] VMMDLL_ConfigGet");
+	LOG(" ID = %lli", qwID);
+	LOG(" VERSION = %lli.%lli\n", qwVersionMajor, qwVersionMinor);
+
+	if ((qwVersionMajor >= 4) && ((qwVersionMajor >= 5) || (qwVersionMinor >= 7)))
+	{
+		HANDLE handle;
+		LC_CONFIG config = {.dwVersion = LC_CONFIG_VERSION, .szDevice = "existing"};
+		handle = LcCreate(&config);
+		if (!handle)
+		{
+			LOG("[!] Failed to create FPGA device\n");
+			return false;
+		}
+
+		LcCommand(handle, LC_CMD_FPGA_CFGREGPCIE_MARKWR | 0x002, 4, (PBYTE)&abort2, NULL, NULL);
+		LOG("[-] Register auto cleared\n");
+		LcClose(handle);
+	}
+
 	return true;
 }
 
@@ -128,6 +137,7 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 			args[argc++] = (LPSTR)"-printf";
 		}
 
+		std::string path = "";
 		if (memMap)
 		{
 			LOG("dumping memory map to file...\n");
@@ -140,7 +150,7 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 			{
 				LOG("Dumped memory map!\n");
 				auto temp_path = std::filesystem::temp_directory_path();
-				auto path = (temp_path.string() + "\\mmap.txt");
+				path = (temp_path.string() + "\\mmap.txt");
 
 				//Add the memory map to the arguments and increase arg count.
 				args[argc++] = (LPSTR)"-memmap";
@@ -174,41 +184,46 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 	}
 	else
 		LOG("DMA already initialized!\n");
-	if (!PROCESS_INITIALIZED)
+
+	if (PROCESS_INITIALIZED)
 	{
-		this->current_process.PID = GetPidFromName(process_name);
-		if (!this->current_process.PID)
-		{
-			LOG("[!] Could not get PID from name!\n");
-			VMMDLL_Close(this->vHandle);
-			return false;
-		}
-
-		this->current_process.base_address = GetBaseDaddy(process_name);
-		if (!this->current_process.base_address)
-		{
-			LOG("[!] Could not get base address!\n");
-			VMMDLL_Close(this->vHandle);
-			return false;
-		}
-
-		this->current_process.base_size = GetBaseSize(process_name);
-		if (!this->current_process.base_size)
-		{
-			LOG("[!] Could not get base size!\n");
-			VMMDLL_Close(this->vHandle);
-			return false;
-		}
-
-		this->current_process.process_name = process_name;
-
-		LOG("Process information of %s\n", process_name.c_str());
-		LOG("PID: %i\n", this->current_process.PID);
-		LOG("Base Address: 0x%p\n", this->current_process.base_address);
-		LOG("Base Size: 0x%p\n", this->current_process.base_size);
-
-		PROCESS_INITIALIZED = TRUE;
+		LOG("Process already initialized!\n");
+		return true;
 	}
+
+	this->current_process.PID = GetPidFromName(process_name);
+	if (!this->current_process.PID)
+	{
+		LOG("[!] Could not get PID from name!\n");
+		VMMDLL_Close(this->vHandle);
+		return false;
+	}
+
+	this->current_process.base_address = GetBaseDaddy(process_name);
+	if (!this->current_process.base_address)
+	{
+		LOG("[!] Could not get base address!\n");
+		VMMDLL_Close(this->vHandle);
+		return false;
+	}
+
+	this->current_process.base_size = GetBaseSize(process_name);
+	if (!this->current_process.base_size)
+	{
+		LOG("[!] Could not get base size!\n");
+		VMMDLL_Close(this->vHandle);
+		return false;
+	}
+
+	this->current_process.process_name = process_name;
+
+	LOG("Process information of %s\n", process_name.c_str());
+	LOG("PID: %i\n", this->current_process.PID);
+	LOG("Base Address: 0x%p\n", this->current_process.base_address);
+	LOG("Base Size: 0x%p\n", this->current_process.base_size);
+
+	PROCESS_INITIALIZED = TRUE;
+
 	return true;
 }
 
@@ -224,8 +239,8 @@ std::vector<int> Memory::GetPidListFromName(std::string name)
 	PVMMDLL_PROCESS_INFORMATION process_info = NULL;
 	DWORD total_processes = 0;
 	std::vector<int> list = { };
-	bool result = VMMDLL_ProcessGetInformationAll(this->vHandle, &process_info, &total_processes);
-	if (!result)
+
+	if (!VMMDLL_ProcessGetInformationAll(this->vHandle, &process_info, &total_processes))
 	{
 		LOG("[!] Failed to get process list\n");
 		return list;
@@ -245,8 +260,7 @@ std::vector<std::string> Memory::GetModuleList(std::string process_name)
 {
 	std::vector<std::string> list = { };
 	PVMMDLL_MAP_MODULE module_info;
-	auto bResult = VMMDLL_Map_GetModuleU(this->vHandle, this->current_process.PID, &module_info, VMMDLL_MODULE_FLAG_NORMAL);
-	if (!bResult)
+	if (!VMMDLL_Map_GetModuleU(this->vHandle, this->current_process.PID, &module_info, VMMDLL_MODULE_FLAG_NORMAL))
 	{
 		LOG("[!] Failed to get module list\n");
 		return list;
@@ -269,14 +283,14 @@ VMMDLL_PROCESS_INFORMATION Memory::GetProcessInformation()
 	info.magic = VMMDLL_PROCESS_INFORMATION_MAGIC;
 	info.wVersion = VMMDLL_PROCESS_INFORMATION_VERSION;
 
-	bool result = VMMDLL_ProcessGetInformation(this->vHandle, this->current_process.PID, &info, &process_information);
-	if (result)
+	if (!VMMDLL_ProcessGetInformation(this->vHandle, this->current_process.PID, &info, &process_information))
 	{
-		LOG("[+] Found process information\n");
-		return info;
+		LOG("[!] Failed to find process information\n");
+		return { };
 	}
-	LOG("[!] Failed to find process information\n");
-	return { };
+
+	LOG("[+] Found process information\n");
+	return info;
 }
 
 PEB Memory::GetProcessPeb()
@@ -296,14 +310,14 @@ size_t Memory::GetBaseDaddy(std::string module_name)
 	std::wstring str(module_name.begin(), module_name.end());
 
 	PVMMDLL_MAP_MODULEENTRY module_info;
-	auto bResult = VMMDLL_Map_GetModuleFromNameW(this->vHandle, this->current_process.PID, (LPWSTR)str.c_str(), &module_info, VMMDLL_MODULE_FLAG_NORMAL);
-	if (bResult)
+	if (!VMMDLL_Map_GetModuleFromNameW(this->vHandle, this->current_process.PID, (LPWSTR)str.c_str(), &module_info, VMMDLL_MODULE_FLAG_NORMAL))
 	{
-		LOG("[+] Found Base Address for %s at 0x%p\n", module_name.c_str(), module_info->vaBase);
-		return module_info->vaBase;
+		LOG("[!] Couldn't find Base Address for %s\n", module_name.c_str());
+		return 0;
 	}
-	LOG("[!] Couldn't find Base Address for %s\n", module_name.c_str());
-	return 0;
+
+	LOG("[+] Found Base Address for %s at 0x%p\n", module_name.c_str(), module_info->vaBase);
+	return module_info->vaBase;
 }
 
 size_t Memory::GetBaseSize(std::string module_name)
@@ -330,6 +344,7 @@ uintptr_t Memory::GetExportTableAddress(std::string import, std::string process,
 		LOG("[!] Failed to get Export Table\n");
 		return 0;
 	}
+
 	if (eat_map->dwVersion != VMMDLL_MAP_EAT_VERSION)
 	{
 		VMMDLL_MemFree(eat_map);
@@ -578,26 +593,23 @@ bool Memory::DumpMemory(uintptr_t address, std::string path)
 	//Build new import Table
 
 	//Dump file
-	bool result = false;
 	const auto dumped_file = CreateFileW(std::wstring(path.begin(), path.end()).c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_COMPRESSED, NULL);
-	if (dumped_file != INVALID_HANDLE_VALUE)
-	{
-		if (!WriteFile(dumped_file, target.get(), static_cast<DWORD>(target_size), NULL, NULL))
-		{
-			LOG("[!] Failed writing file: %i\n", GetLastError());
-		}
-		else
-		{
-			LOG("[+] Successfully dumped memory at %s\n", path.c_str());
-			result = true;
-		}
-		CloseHandle(dumped_file);
-	}
-	else
+	if (dumped_file == INVALID_HANDLE_VALUE)
 	{
 		LOG("[!] Failed creating file: %i\n", GetLastError());
+		return false;
 	}
-	return result;
+
+	if (!WriteFile(dumped_file, target.get(), static_cast<DWORD>(target_size), NULL, NULL))
+	{
+		LOG("[!] Failed writing file: %i\n", GetLastError());
+		CloseHandle(dumped_file);
+		return false;
+	}
+
+	LOG("[+] Successfully dumped memory at %s\n", path.c_str());
+	CloseHandle(dumped_file);
+	return true;
 }
 
 static const char* hexdigits =
