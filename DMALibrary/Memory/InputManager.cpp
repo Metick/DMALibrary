@@ -71,7 +71,7 @@ void c_keys::UpdateKeys()
 
 	VMMDLL_MemReadEx(mem.vHandle, this->win_logon_pid | VMMDLL_PID_PROCESS_WITH_KERNELMEMORY, gafAsyncKeyStateExport, (PBYTE)&state_bitmap, 64, NULL, VMMDLL_FLAG_NOCACHE);
 	for (int vk = 0; vk < 256; ++vk)
-		if ((state_bitmap[((vk * 2) / 8)] & 1 << (vk % 8)) && !(previous_key_state_bitmap[((vk * 2) / 8)] & 1 << vk % 8))
+		if ((state_bitmap[((vk * 2) / 8)] & 1 << (vk % 8)) && !(previous_key_state_bitmap[((vk * 2) / 8)] & 1 << (vk % 8)))
 			previous_state_bitmap[vk / 8] |= 1 << (vk % 8);
 }
 
