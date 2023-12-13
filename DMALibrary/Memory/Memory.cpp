@@ -195,7 +195,6 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 	if (!this->current_process.PID)
 	{
 		LOG("[!] Could not get PID from name!\n");
-		VMMDLL_Close(this->vHandle);
 		return false;
 	}
 
@@ -203,7 +202,6 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 	if (!this->current_process.base_address)
 	{
 		LOG("[!] Could not get base address!\n");
-		VMMDLL_Close(this->vHandle);
 		return false;
 	}
 
@@ -211,7 +209,6 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 	if (!this->current_process.base_size)
 	{
 		LOG("[!] Could not get base size!\n");
-		VMMDLL_Close(this->vHandle);
 		return false;
 	}
 
