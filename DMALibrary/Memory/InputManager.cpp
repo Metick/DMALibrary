@@ -71,12 +71,18 @@ void c_keys::UpdateKeys()
 
 	VMMDLL_MemReadEx(mem.vHandle, this->win_logon_pid | VMMDLL_PID_PROCESS_WITH_KERNELMEMORY, gafAsyncKeyStateExport, (PBYTE)&state_bitmap, 64, NULL, VMMDLL_FLAG_NOCACHE);
 	for (int vk = 0; vk < 256; ++vk)
-		if ((state_bitmap[((vk * 2) / 8)] & 1 << (vk % 8)) && !(previous_key_state_bitmap[((vk * 2) / 8)] & 1 << (vk % 8)))
-			previous_state_bitmap[vk / 8] |= 1 << (vk % 8);
+		if ((state_bitmap[(vk * 2 / 8)] & 1 << vk % 4 * 2) && !(previous_key_state_bitmap[(vk * 2 / 8)] & 1 << vk % 4 * 2))
+			previous_state_bitmap[vk / 8] |= 1 << vk % 8;
 }
 
 bool c_keys::IsKeyDown(uint32_t virtual_key_code)
 {
-	this->UpdateKeys();
-	return state_bitmap[((virtual_key_code * 2) / 8)] & 1 << (virtual_key_code % 8);
+	if (gafAsyncKeyStateExport < 0x7FFFFFFFFFFF)
+		return false;
+	if (std::chrono::system_clock::now() - start > std::chrono::milliseconds(1))
+	{
+		UpdateKeys();
+		start = std::chrono::system_clock::now();
+	}
+	return state_bitmap[(virtual_key_code * 2 / 8)] & 1 << virtual_key_code % 4 * 2;
 }

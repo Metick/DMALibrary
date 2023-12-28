@@ -46,7 +46,7 @@ private:
 	bool SetFPGA();
 
 	//shared pointer
-	c_keys key;
+	std::shared_ptr<c_keys> key;
 	c_registry registry;
 	c_shellcode shellcode;
 
@@ -71,7 +71,7 @@ public:
 	* @brief Gets the key object
 	* @return key class
 	*/
-	c_keys GetKeyboard() { return key; }
+	c_keys* GetKeyboard() { return key.get(); }
 
 	/**
 	* @brief Gets the shellcode object

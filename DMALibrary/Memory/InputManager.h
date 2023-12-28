@@ -13,6 +13,7 @@ private:
 	int win_logon_pid = 0;
 
 	c_registry registry;
+	std::chrono::time_point<std::chrono::system_clock> start = std::chrono::system_clock::now();
 
 public:
 	c_keys() = default;

@@ -33,7 +33,6 @@ public:
 	**/
 	bool call_function(void* hook, void* function, std::string process_name);
 
-	//TODO: figure out the mem undeclared fuckery
 	/*template <typename T, typename... Args>
 	auto SysCall(uint64_t function, Args&&... args) -> std::enable_if_t<!std::is_void<std::invoke_result_t<T, Args...>>::value, std::invoke_result_t<T, Args...>>
 	{

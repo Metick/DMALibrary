@@ -6,7 +6,7 @@
 
 int main()
 {
-	if (!mem.Init("explorer.exe", true))
+	if (!mem.Init("explorer.exe", true, true))
 	{
 		std::cout << "Failed to initilize DMA" << std::endl;
 		return 1;
@@ -14,27 +14,44 @@ int main()
 
 	std::cout << "DMA initilized" << std::endl;
 
-	if (!mem.GetKeyboard().InitKeyboard())
+	if (!mem.GetKeyboard()->InitKeyboard())
 	{
 		std::cout << "Failed to initialize keyboard hotkeys through kernel." << std::endl;
 		return 1;
 	}
 
 	//example keyboard usage.
-	//mem.GetKeyboard().IsKeyDown(VK_F5);
+	std::cout << "Continueing once 'A' has been pressed." << std::endl;
+	while (!mem.GetKeyboard()->IsKeyDown(0x41))
+	{
+	}
 
 	if (!mem.FixCr3())
 		std::cout << "Failed to fix CR3" << std::endl;
 	else
 		std::cout << "CR3 fixed" << std::endl;
-	/*auto all_modules = mem.GetModuleList("explorer.exe");
-	std::cout << "Explorer.exe Modules: " << std::endl;
-	for (size_t i = 0; i < all_modules.size(); i++)
-	{
-		std::cout << "Module: " << all_modules[i] << std::endl;
-	}*/
 
-	mem.DumpMemory(mem.GetBaseDaddy("Discovery.exe"), "C:\\dump.exe");
+	uintptr_t base = mem.GetBaseDaddy("explorer.exe");
+
+	std::cout << "Value: " << mem.Read<int>(base + 0x66) << std::endl;
+	mem.Write<int>(base + 0x66, 0x69);
+	std::cout << "Value: " << mem.Read<int>(base + 0x66) << std::endl;
+
+	auto handle = mem.CreateScatterHandle();
+
+	int value = 0;
+	mem.AddScatterReadRequest(handle, base + 0x66, &value, sizeof(value));
+	//You have to execute the read requests before you can read the values.
+	mem.ExecuteReadScatter(handle);
+	std::cout << "Value: " << value << std::endl;
+
+	//You can also write to memory using scatter requests.
+	value = 500;
+	mem.AddScatterWriteRequest(handle, base + 0x66, &value, sizeof(value));
+	mem.ExecuteWriteScatter(handle);
+
+	//Always make sure to clean up the handle, otherwise you'll end up with a memory leak.
+	mem.CloseScatterHandle(handle);
 
 	std::cout << "Hello World!\n";
 	//pause();

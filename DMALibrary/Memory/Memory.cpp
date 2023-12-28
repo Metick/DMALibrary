@@ -18,6 +18,9 @@ Memory::Memory()
 		LOG("leech: %p\n", modules.LEECHCORE);
 		THROW("[!] Could not load a library\n");
 	}
+
+	this->key = std::make_shared<c_keys>();
+
 	LOG("Successfully loaded libraries!\n");
 }
 
@@ -197,6 +200,11 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 		LOG("[!] Could not get PID from name!\n");
 		return false;
 	}
+	this->current_process.process_name = process_name;
+	if (!mem.FixCr3())
+		std::cout << "Failed to fix CR3" << std::endl;
+	else
+		std::cout << "CR3 fixed" << std::endl;
 
 	this->current_process.base_address = GetBaseDaddy(process_name);
 	if (!this->current_process.base_address)
@@ -211,8 +219,6 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 		LOG("[!] Could not get base size!\n");
 		return false;
 	}
-
-	this->current_process.process_name = process_name;
 
 	LOG("Process information of %s\n", process_name.c_str());
 	LOG("PID: %i\n", this->current_process.PID);
