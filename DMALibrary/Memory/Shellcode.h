@@ -1,5 +1,6 @@
 #pragma once
 #include "../pch.h"
+//#include "memory.h"
 
 class c_shellcode
 {
@@ -52,9 +53,10 @@ public:
 		if (!mem.Read(ntos_shutdown, (PBYTE)orig_bytes, sizeof(orig_bytes), 4))
 			return buffer;
 
-		if (!VMMDLL_MemWrite(mem.vHandle, 4, ntos_shutdown, jmp_bytes, sizeof(jmp_bytes)))
+	
+		if (!mem.Write(ntos_shutdown, jmp_bytes, sizeof(jmp_bytes), 4))
 		{
-			printf("[!] Failed to write memory at 0x%p\n", ntos_shutdown);
+			LOG("[!] Failed to write memory at 0x%p\n", ntos_shutdown);
 			return buffer;
 		}
 
@@ -62,11 +64,9 @@ public:
 		buffer = std::invoke(reinterpret_cast<T>(nt_shutdown), std::forward<Args>(args)...);
 
 		//Restore function
-		if (!VMMDLL_MemWrite(mem.vHandle, 4, ntos_shutdown, orig_bytes, sizeof(orig_bytes)))
-		{
+		if (!mem.Write(ntos_shutdown, orig_bytes, sizeof(orig_bytes), 4))
 			LOG("[!] Failed to write memory at 0x%p\n", ntos_shutdown);
-			return buffer;
-		}
+
 		return buffer;
 	}
 
@@ -88,20 +88,16 @@ public:
 		BYTE orig_bytes[sizeof(jmp_bytes)];
 		if (!mem.Read(ntos_shutdown, (PBYTE)orig_bytes, sizeof(orig_bytes), 4))
 			return;
-
-		if (!VMMDLL_MemWrite(mem.vHandle, 4, ntos_shutdown, jmp_bytes, sizeof(jmp_bytes)))
+		if (!mem.Write(ntos_shutdown, jmp_bytes, sizeof(jmp_bytes), 4))
 		{
-			printf("[!] Failed to write memory at 0x%p\n", ntos_shutdown);
+			LOG("[!] Failed to write memory at 0x%p\n", ntos_shutdown);
 			return;
 		}
 
 		std::invoke(reinterpret_cast<T>(nt_shutdown), std::forward<Args>(args)...);
 
 		// Restore function
-		if (!VMMDLL_MemWrite(mem.vHandle, 4, ntos_shutdown, orig_bytes, sizeof(orig_bytes)))
-		{
+		if (!mem.Write(ntos_shutdown, orig_bytes, sizeof(orig_bytes), 4))
 			LOG("[!] Failed to write memory at 0x%p\n", ntos_shutdown);
-			return;
-		}
 	}*/
 };

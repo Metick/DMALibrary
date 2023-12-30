@@ -24,6 +24,7 @@ int main()
 	std::cout << "Continueing once 'A' has been pressed." << std::endl;
 	while (!mem.GetKeyboard()->IsKeyDown(0x41))
 	{
+		Sleep(100);
 	}
 
 	if (!mem.FixCr3())

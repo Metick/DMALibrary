@@ -131,7 +131,7 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 	if (!DMA_INITIALIZED)
 	{
 		LOG("inizializing...\n");
-
+reinit:
 		LPSTR args[] = {(LPSTR)"", (LPSTR)"-device", (LPSTR)"fpga://algo=0", (LPSTR)"", (LPSTR)"", (LPSTR)"", (LPSTR)""};
 		DWORD argc = 3;
 		if (debug)
@@ -143,8 +143,15 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 		std::string path = "";
 		if (memMap)
 		{
+			auto temp_path = std::filesystem::temp_directory_path();
+			path = (temp_path.string() + "\\mmap.txt");
+			bool dumped = false;
+			if (!std::filesystem::exists(path))
+				dumped = this->DumpMemoryMap(debug);
+			else
+				dumped = true;
 			LOG("dumping memory map to file...\n");
-			if (!this->DumpMemoryMap(debug))
+			if (!dumped)
 			{
 				LOG("[!] ERROR: Could not dump memory map!\n");
 				LOG("Defaulting to no memory map!\n");
@@ -152,8 +159,6 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 			else
 			{
 				LOG("Dumped memory map!\n");
-				auto temp_path = std::filesystem::temp_directory_path();
-				path = (temp_path.string() + "\\mmap.txt");
 
 				//Add the memory map to the arguments and increase arg count.
 				args[argc++] = (LPSTR)"-memmap";
@@ -163,6 +168,12 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 		this->vHandle = VMMDLL_Initialize(argc, args);
 		if (!this->vHandle)
 		{
+			if (memMap)
+			{
+				memMap = false;
+				LOG("[!] Initialization failed with Memory map? Try without MMap\n");
+				goto reinit;
+			}
 			LOG("[!] Initialization failed! Is the DMA in use or disconnected?\n");
 			return false;
 		}
