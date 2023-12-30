@@ -36,3 +36,6 @@ and compiled from if you are lazy.
 https://github.com/ufrisk/MemProcFS/tree/master/includes/lib32
 
 Also special thanks to ufrisk for the libraries i used in this project.
+
+## License
+License This DMALibrary is open-source and licensed under the MIT License. Feel free to use, modify, and distribute it in your projects.
