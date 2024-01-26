@@ -49,7 +49,7 @@ uint64_t c_shellcode::find_codecave(size_t function_size, std::string process_na
 		return 0;
 	}
 
-	auto buffer = std::unique_ptr<uint8_t[]>(new uint8_t(function_size));
+	auto buffer = std::unique_ptr<uint8_t[]>(new uint8_t[function_size]);
 	if (!mem.Read(codecave, buffer.get(), function_size, pid))
 	{
 		LOG("[!] Could not read codecave for '%s'\n", module.c_str());
