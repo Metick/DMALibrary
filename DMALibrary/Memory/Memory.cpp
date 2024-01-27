@@ -96,7 +96,9 @@ unsigned char abort2[4] = {0x10, 0x00, 0x10, 0x00};
 bool Memory::SetFPGA()
 {
 	bool result;
-	ULONG64 qwID, qwVersionMajor, qwVersionMinor;
+	ULONG64 qwID = 0;
+	ULONG64 qwVersionMajor = 0;
+	ULONG64 qwVersionMinor = 0;
 	if (!VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_FPGA_ID, &qwID) && VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_VERSION_MAJOR, &qwVersionMajor) && VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_VERSION_MINOR, &qwVersionMinor))
 	{
 		LOG("[!] Failed to lookup FPGA device, Attempting to proceed\n\n");
