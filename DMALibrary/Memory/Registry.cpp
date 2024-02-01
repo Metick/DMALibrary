@@ -14,7 +14,7 @@ std::string c_registry::QueryValue(const char* path, e_registry_type type)
 	if (!VMMDLL_WinReg_QueryValueExU(mem.vHandle, CC_TO_LPSTR(path), &_type, buffer, &size))
 	{
 		LOG("[!] failed QueryValueExU call\n");
-		return nullptr;
+		return "";
 	}
 
 	std::wstring wstr = std::wstring((wchar_t*)buffer);
