@@ -38,9 +38,16 @@ int main()
 	mem.Write<int>(base + 0x66, 0x69);
 	std::cout << "Value: " << mem.Read<int>(base + 0x66) << std::endl;
 
+	int value = 0;
+	if (mem.Read(base + 0x66, &value, sizeof(value)))
+		std::cout << "Read Value" << std::endl;
+	else
+		std::cout << "Failed to read Value" << std::endl;
+	std::cout << "Value: " << value << std::endl;
+
 	auto handle = mem.CreateScatterHandle();
 
-	int value = 0;
+	value = 0;
 	mem.AddScatterReadRequest(handle, base + 0x66, &value, sizeof(value));
 	//You have to execute the read requests before you can read the values.
 	mem.ExecuteReadScatter(handle);

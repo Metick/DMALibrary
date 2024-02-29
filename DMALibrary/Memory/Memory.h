@@ -264,11 +264,24 @@ public:
 	}
 
 	/**
+	* brief Reads a chain of offsets from the address
+	* @param address The address to read from
+	* @param a vector of offset values to read through
+	* @return the value read from the chain
+	*/
+	uint64_t ReadChain(uint64_t base, const std::vector<uint64_t>& offsets)
+	{
+		uint64_t result = Read<uint64_t>(base + offsets.at(0));
+		for (int i = 1; i < offsets.size(); i++) result = Read<uint64_t>(result + offsets.at(i));
+		return result;
+	}
+
+	/**
 	 * \brief Create a scatter handle, this is used for scatter read/write requests
 	 * \return Scatter handle
 	 */
-	VMMDLL_SCATTER_HANDLE CreateScatterHandle();
-	VMMDLL_SCATTER_HANDLE CreateScatterHandle(int pid);
+	VMMDLL_SCATTER_HANDLE CreateScatterHandle() const;
+	VMMDLL_SCATTER_HANDLE CreateScatterHandle(int pid) const;
 
 	/**
 	 * \brief Closes the scatter handle

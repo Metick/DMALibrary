@@ -4,7 +4,7 @@
 
 std::vector<std::string> blacklist = {"kernel32.dll", "kernelbase.dll", "wow64.dll", "wow64win.dll", "wow64cpu.dll", "ntoskrnl.exe", "win32kbase.sys"};
 
-uint64_t c_shellcode::find_codecave(size_t function_size, std::string process_name, std::string module)
+uint64_t c_shellcode::find_codecave(size_t function_size, const std::string& process_name, const std::string& module)
 {
 	int pid = mem.GetPidFromName(process_name);
 	VMMDLL_PROCESS_INFORMATION process_info = {0};
@@ -18,14 +18,14 @@ uint64_t c_shellcode::find_codecave(size_t function_size, std::string process_na
 	}
 
 	DWORD cSections = 0;
-	if (!VMMDLL_ProcessGetSectionsU(mem.vHandle, pid, (LPSTR)module.c_str(), NULL, 0, &cSections) || !cSections)
+	if (!VMMDLL_ProcessGetSectionsU(mem.vHandle, pid, const_cast<LPSTR>(module.c_str()), NULL, 0, &cSections) || !cSections)
 	{
 		LOG("[!] Could not retrieve sections #1 for '%s'\n", module.c_str());
 		return 0;
 	}
 
-	PIMAGE_SECTION_HEADER pSections = (PIMAGE_SECTION_HEADER)LocalAlloc(LMEM_ZEROINIT, cSections * sizeof(IMAGE_SECTION_HEADER));
-	if (!pSections || !VMMDLL_ProcessGetSectionsU(mem.vHandle, pid, (LPSTR)module.c_str(), pSections, cSections, &cSections) || !cSections)
+	const PIMAGE_SECTION_HEADER pSections = static_cast<PIMAGE_SECTION_HEADER>(LocalAlloc(LMEM_ZEROINIT, cSections * sizeof(IMAGE_SECTION_HEADER)));
+	if (!pSections || !VMMDLL_ProcessGetSectionsU(mem.vHandle, pid, const_cast<LPSTR>(module.c_str()), pSections, cSections, &cSections) || !cSections)
 	{
 		LOG("[!] Could not retrieve sections #2 for '%s'\n", module);
 		return 0;
@@ -37,7 +37,7 @@ uint64_t c_shellcode::find_codecave(size_t function_size, std::string process_na
 	{
 		if (!codecave && ((pSections[i].Characteristics & (IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_MEM_WRITE | IMAGE_SCN_MEM_READ))) && ((pSections[i].Misc.VirtualSize & 0xfff) < (0x1000 - function_size)))
 		{
-			codecave = VMMDLL_ProcessGetModuleBaseU(mem.vHandle, pid, (LPSTR)module.c_str()) + ((pSections[i].VirtualAddress + pSections[i].Misc.VirtualSize)) + 0x10;
+			codecave = VMMDLL_ProcessGetModuleBaseU(mem.vHandle, pid, const_cast<LPSTR>(module.c_str())) + ((pSections[i].VirtualAddress + pSections[i].Misc.VirtualSize)) + 0x10;
 			if (!codecave)
 				break;
 		}
@@ -68,7 +68,7 @@ uint64_t c_shellcode::find_codecave(size_t function_size, std::string process_na
 	return codecave;
 }
 
-std::vector<uint64_t> c_shellcode::find_all_codecave(size_t function_size, std::string process_name)
+std::vector<uint64_t> c_shellcode::find_all_codecave(size_t function_size, const std::string& process_name)
 {
 	std::vector<uint64_t> codecaves = { };
 	std::vector<std::string> module_list = mem.GetModuleList(process_name);
@@ -86,7 +86,7 @@ std::vector<uint64_t> c_shellcode::find_all_codecave(size_t function_size, std::
 	return codecaves;
 }
 
-bool c_shellcode::call_function(void* hook, void* function, std::string process_name)
+bool c_shellcode::call_function(void* hook, void* function, const std::string& process_name)
 {
 	int pid = mem.GetPidFromName(process_name);
 
@@ -96,13 +96,13 @@ bool c_shellcode::call_function(void* hook, void* function, std::string process_
 	};
 
 	// Set jump address
-	*reinterpret_cast<uint64_t*>(jmp_bytes + 6) = (uintptr_t)hook;
+	*reinterpret_cast<uint64_t*>(jmp_bytes + 6) = reinterpret_cast<uintptr_t>(hook);
 
 	auto orig_bytes = std::unique_ptr<uint8_t[]>(new uint8_t[sizeof(jmp_bytes)]);
-	if (!mem.Read((uintptr_t)function, orig_bytes.get(), sizeof(jmp_bytes), pid))
+	if (!mem.Read(reinterpret_cast<uintptr_t>(function), orig_bytes.get(), sizeof(jmp_bytes), pid))
 		return 0;
 
-	if (!VMMDLL_MemWrite(mem.vHandle, pid, (uintptr_t)function, jmp_bytes, sizeof(jmp_bytes)))
+	if (!VMMDLL_MemWrite(mem.vHandle, pid, reinterpret_cast<uintptr_t>(function), jmp_bytes, sizeof(jmp_bytes)))
 	{
 		LOG("[!] 1 Failed to write memory at 0x%p\n", function);
 		return false;
@@ -111,7 +111,7 @@ bool c_shellcode::call_function(void* hook, void* function, std::string process_
 	Sleep(100);
 
 	//Restore function
-	if (!VMMDLL_MemWrite(mem.vHandle, pid, (uintptr_t)function, orig_bytes.get(), sizeof(jmp_bytes)))
+	if (!VMMDLL_MemWrite(mem.vHandle, pid, reinterpret_cast<uintptr_t>(function), orig_bytes.get(), sizeof(jmp_bytes)))
 	{
 		LOG("[!] 2 Failed to write memory at 0x%p\n", function);
 		return false;

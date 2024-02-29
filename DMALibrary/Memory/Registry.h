@@ -19,22 +19,6 @@ enum class e_registry_type
 	qword_little_endian = REG_QWORD_LITTLE_ENDIAN
 };
 
-inline const char* LPWSTR_TO_CC(LPWSTR in)
-{
-	char buffer[500];
-	wcstombs(buffer, in, 500);
-
-	return buffer;
-}
-
-inline LPSTR CC_TO_LPSTR(const char* in)
-{
-	LPSTR out = new char[strlen(in) + 1];
-	strcpy_s(out, strlen(in) + 1, in);
-
-	return out;
-}
-
 class c_registry
 {
 private:
