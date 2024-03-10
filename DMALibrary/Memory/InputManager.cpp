@@ -68,18 +68,19 @@ bool c_keys::InitKeyboard()
 				LOG("failed to get module info\n");
 				return false;
 			}
+
 			char str[32];
 			if (!VMMDLL_PdbLoad(mem.vHandle, mem.GetPidFromName("winlogon.exe") | VMMDLL_PID_PROCESS_WITH_KERNELMEMORY, module_info->vaBase, str))
 			{
 				LOG("failed to load pdb\n");
-				return 1;
+				return false;
 			}
 
 			uintptr_t gafAsyncKeyState;
 			if (!VMMDLL_PdbSymbolAddress(mem.vHandle, str, const_cast<LPSTR>("gafAsyncKeyState"), &gafAsyncKeyState))
 			{
 				LOG("failed to find gafAsyncKeyState\n");
-				return 1;
+				return false;
 			}
 			LOG("found gafAsyncKeyState at: 0x%p\n", gafAsyncKeyState);
 		}
