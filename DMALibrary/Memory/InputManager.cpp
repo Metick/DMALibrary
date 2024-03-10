@@ -59,6 +59,28 @@ bool c_keys::InitKeyboard()
 
 		VMMDLL_MemFree(eat_map);
 		eat_map = NULL;
+		if (gafAsyncKeyStateExport < 0x7FFFFFFFFFFF)
+		{
+			PVMMDLL_MAP_MODULEENTRY module_info;
+			auto result = VMMDLL_Map_GetModuleFromNameW(mem.vHandle, mem.GetPidFromName("winlogon.exe") | VMMDLL_PID_PROCESS_WITH_KERNELMEMORY, static_cast<LPCWSTR>(L"win32kbase.sys"), &module_info, VMMDLL_MODULE_FLAG_NORMAL);
+			if (result)
+			{
+				char str[32];
+				if (!VMMDLL_PdbLoad(mem.vHandle, mem.GetPidFromName("winlogon.exe") | VMMDLL_PID_PROCESS_WITH_KERNELMEMORY, module_info->vaBase, str))
+				{
+					printf("failed to load pdb\n");
+					return 1;
+				}
+
+				uintptr_t gafAsyncKeyState;
+				if (!VMMDLL_PdbSymbolAddress(mem.vHandle, str, const_cast<LPSTR>("gafAsyncKeyState"), &gafAsyncKeyState))
+				{
+					printf("failed to find gafAsyncKeyState\n");
+					return 1;
+				}
+				printf("found gafAsyncKeyState at: 0x%p\n", gafAsyncKeyState);
+			}
+		}
 		if (gafAsyncKeyStateExport > 0x7FFFFFFFFFFF)
 			return true;
 		return false;
