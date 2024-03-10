@@ -33,12 +33,12 @@ Memory::~Memory()
 
 bool Memory::DumpMemoryMap(bool debug)
 {
-	LPSTR args[] = {const_cast<LPSTR>(""), const_cast<LPSTR>("-device"), const_cast<LPSTR>("fpga://algo=0"), const_cast<LPSTR>(""), const_cast<LPSTR>("")};
+	LPCSTR args[] = {const_cast<LPCSTR>(""), const_cast<LPCSTR>("-device"), const_cast<LPCSTR>("fpga://algo=0"), const_cast<LPCSTR>(""), const_cast<LPCSTR>("")};
 	int argc = 3;
 	if (debug)
 	{
-		args[argc++] = const_cast<LPSTR>("-v");
-		args[argc++] = const_cast<LPSTR>("-printf");
+		args[argc++] = const_cast<LPCSTR>("-v");
+		args[argc++] = const_cast<LPCSTR>("-printf");
 	}
 
 	VMM_HANDLE handle = VMMDLL_Initialize(argc, args);
@@ -134,12 +134,12 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 	{
 		LOG("inizializing...\n");
 	reinit:
-		LPSTR args[] = {const_cast<LPSTR>(""), const_cast<LPSTR>("-device"), const_cast<LPSTR>("fpga://algo=0"), const_cast<LPSTR>(""), const_cast<LPSTR>(""), const_cast<LPSTR>(""), const_cast<LPSTR>("")};
+		LPCSTR args[] = {const_cast<LPCSTR>(""), const_cast<LPCSTR>("-device"), const_cast<LPCSTR>("fpga://algo=0"), const_cast<LPCSTR>(""), const_cast<LPCSTR>(""), const_cast<LPCSTR>(""), const_cast<LPCSTR>("")};
 		DWORD argc = 3;
 		if (debug)
 		{
-			args[argc++] = const_cast<LPSTR>("-v");
-			args[argc++] = const_cast<LPSTR>("-printf");
+			args[argc++] = const_cast<LPCSTR>("-v");
+			args[argc++] = const_cast<LPCSTR>("-printf");
 		}
 
 		std::string path = "";
@@ -424,7 +424,7 @@ uintptr_t Memory::GetImportTableAddress(std::string import, std::string process,
 
 uint64_t cbSize = 0x80000;
 //callback for VfsFileListU
-VOID cbAddFile(_Inout_ HANDLE h, _In_ LPSTR uszName, _In_ ULONG64 cb, _In_opt_ PVMMDLL_VFS_FILELIST_EXINFO pExInfo)
+VOID cbAddFile(_Inout_ HANDLE h, _In_ LPCSTR uszName, _In_ ULONG64 cb, _In_opt_ PVMMDLL_VFS_FILELIST_EXINFO pExInfo)
 {
 	if (strcmp(uszName, "dtb.txt") == 0)
 		cbSize = cb;
