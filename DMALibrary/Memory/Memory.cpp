@@ -75,7 +75,7 @@ bool Memory::DumpMemoryMap(bool debug)
 	std::stringstream sb;
 	for (DWORD i = 0; i < pPhysMemMap->cMap; i++)
 	{
-		sb << std::setfill('0') << std::setw(4) << i << "  " << std::hex << pPhysMemMap->pMap[i].pa << "  -  " << (pPhysMemMap->pMap[i].pa + pPhysMemMap->pMap[i].cb - 1) << "  ->  " << pPhysMemMap->pMap[i].pa << std::endl;
+		sb << std::hex << pPhysMemMap->pMap[i].pa << " " << (pPhysMemMap->pMap[i].pa + pPhysMemMap->pMap[i].cb - 1) << std::endl;
 	}
 
 	auto temp_path = std::filesystem::temp_directory_path();
@@ -777,7 +777,7 @@ void Memory::ExecuteReadScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
 		LOG("[-] Failed to Execute Scatter Read\n");
 	}
 	//Clear after using it
-	if (!VMMDLL_Scatter_Clear(handle, pid, VMMDLL_FLAG_NOCACHE))
+	if (!VMMDLL_Scatter_Clear(handle, pid, 0))
 	{
 		LOG("[-] Failed to clear Scatter\n");
 	}
