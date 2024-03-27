@@ -95,10 +95,7 @@ unsigned char abort2[4] = {0x10, 0x00, 0x10, 0x00};
 
 bool Memory::SetFPGA()
 {
-	bool result;
-	ULONG64 qwID = 0;
-	ULONG64 qwVersionMajor = 0;
-	ULONG64 qwVersionMinor = 0;
+	ULONG64 qwID = 0, qwVersionMajor = 0, qwVersionMinor = 0;
 	if (!VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_FPGA_ID, &qwID) && VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_VERSION_MAJOR, &qwVersionMajor) && VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_VERSION_MINOR, &qwVersionMinor))
 	{
 		LOG("[!] Failed to lookup FPGA device, Attempting to proceed\n\n");
@@ -180,7 +177,7 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 			return false;
 		}
 
-		ULONG64 FPGA_ID, DEVICE_ID;
+		ULONG64 FPGA_ID = 0, DEVICE_ID = 0;
 
 		VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_FPGA_ID, &FPGA_ID);
 		VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_DEVICE_ID, &DEVICE_ID);
@@ -275,7 +272,7 @@ std::vector<int> Memory::GetPidListFromName(std::string name)
 std::vector<std::string> Memory::GetModuleList(std::string process_name)
 {
 	std::vector<std::string> list = { };
-	PVMMDLL_MAP_MODULE module_info;
+	PVMMDLL_MAP_MODULE module_info = NULL;
 	if (!VMMDLL_Map_GetModuleU(this->vHandle, current_process.PID, &module_info, VMMDLL_MODULE_FLAG_NORMAL))
 	{
 		LOG("[!] Failed to get module list\n");
@@ -293,7 +290,7 @@ std::vector<std::string> Memory::GetModuleList(std::string process_name)
 
 VMMDLL_PROCESS_INFORMATION Memory::GetProcessInformation()
 {
-	VMMDLL_PROCESS_INFORMATION info;
+	VMMDLL_PROCESS_INFORMATION info = { };
 	SIZE_T process_information = sizeof(VMMDLL_PROCESS_INFORMATION);
 	ZeroMemory(&info, sizeof(VMMDLL_PROCESS_INFORMATION));
 	info.magic = VMMDLL_PROCESS_INFORMATION_MAGIC;
@@ -353,7 +350,7 @@ size_t Memory::GetBaseSize(std::string module_name)
 uintptr_t Memory::GetExportTableAddress(std::string import, std::string process, std::string module)
 {
 	PVMMDLL_MAP_EAT eat_map = NULL;
-	PVMMDLL_MAP_EATENTRY export_entry;
+	PVMMDLL_MAP_EATENTRY export_entry = NULL;
 	bool result = VMMDLL_Map_GetEATU(mem.vHandle, mem.GetPidFromName(process) /*| VMMDLL_PID_PROCESS_WITH_KERNELMEMORY*/, const_cast<LPSTR>(module.c_str()), &eat_map);
 	if (!result)
 	{
@@ -389,7 +386,7 @@ uintptr_t Memory::GetExportTableAddress(std::string import, std::string process,
 uintptr_t Memory::GetImportTableAddress(std::string import, std::string process, std::string module)
 {
 	PVMMDLL_MAP_IAT iat_map = NULL;
-	PVMMDLL_MAP_IATENTRY import_entry;
+	PVMMDLL_MAP_IATENTRY import_entry = NULL;
 	bool result = VMMDLL_Map_GetIATU(mem.vHandle, mem.GetPidFromName(process) /*| VMMDLL_PID_PROCESS_WITH_KERNELMEMORY*/, const_cast<LPSTR>(module.c_str()), &iat_map);
 	if (!result)
 	{
@@ -441,7 +438,7 @@ struct Info
 
 bool Memory::FixCr3()
 {
-	PVMMDLL_MAP_MODULEENTRY module_entry;
+	PVMMDLL_MAP_MODULEENTRY module_entry = NULL;
 	bool result = VMMDLL_Map_GetModuleFromNameU(this->vHandle, current_process.PID, const_cast<LPSTR>(current_process.process_name.c_str()), &module_entry, NULL);
 	if (result)
 		return true; //Doesn't need to be patched lol
@@ -484,10 +481,10 @@ bool Memory::FixCr3()
 	if (nt != VMMDLL_STATUS_SUCCESS)
 		return false;
 
-	std::vector<uint64_t> possible_dtbs;
+	std::vector<uint64_t> possible_dtbs = { };
 	std::string lines(reinterpret_cast<char*>(bytes.get()));
 	std::istringstream iss(lines);
-	std::string line;
+	std::string line = "";
 
 	while (std::getline(iss, line))
 	{
@@ -523,7 +520,7 @@ bool Memory::FixCr3()
 bool Memory::DumpMemory(uintptr_t address, std::string path)
 {
 	LOG("[!] Memory dumping currently does not rebuild the IAT table, imports will be missing from the dump.\n");
-	IMAGE_DOS_HEADER dos;
+	IMAGE_DOS_HEADER dos { };
 	Read(address, &dos, sizeof(IMAGE_DOS_HEADER));
 
 	//Check if memory has a PE 
@@ -777,7 +774,7 @@ void Memory::ExecuteReadScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
 		LOG("[-] Failed to Execute Scatter Read\n");
 	}
 	//Clear after using it
-	if (!VMMDLL_Scatter_Clear(handle, pid, 0))
+	if (!VMMDLL_Scatter_Clear(handle, pid, VMMDLL_FLAG_NOCACHE))
 	{
 		LOG("[-] Failed to clear Scatter\n");
 	}
