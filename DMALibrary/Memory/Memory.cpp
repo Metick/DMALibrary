@@ -288,6 +288,27 @@ std::vector<std::string> Memory::GetModuleList(std::string process_name)
 	return list;
 }
 
+std::string Memory::GetInitializedProcessPath() const
+{
+	if (!PROCESS_INITIALIZED)
+	{
+		THROW("[!] Process not initialized");
+	}
+
+	PVMMDLL_MAP_MODULEENTRY pModuleEntry;
+	if (VMMDLL_Map_GetModuleFromNameU(
+		vHandle,
+		current_process.PID,
+		current_process.process_name.c_str(),
+		&pModuleEntry,
+		VMMDLL_MODULE_FLAG_NORMAL
+	))
+	{
+		return pModuleEntry->uszFullName; 
+	}
+	THROW("[!] Failed to retrieve process path");
+}
+
 VMMDLL_PROCESS_INFORMATION Memory::GetProcessInformation()
 {
 	VMMDLL_PROCESS_INFORMATION info = { };

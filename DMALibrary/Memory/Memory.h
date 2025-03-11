@@ -112,6 +112,12 @@ public:
 	std::vector<std::string> GetModuleList(std::string process_name);
 
 	/**
+	* @brief Gets the full filesystem path of the initialized process
+	* @return Process path as a string, or an error message if retrieval fails
+	*/
+	std::string GetInitializedProcessPath() const;
+
+	/**
 	* \brief Gets the process information
 	* \return the process information
 	*/
