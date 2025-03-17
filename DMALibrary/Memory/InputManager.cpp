@@ -29,7 +29,7 @@ bool c_keys::InitKeyboard()
 			uintptr_t g_session_global_slots;
 			if (!tmp || (Winver >= 26100 && Ubr >= 2605)) {
 				tmp = VMMDLL_ProcessGetModuleBaseU(mem.vHandle, pid, const_cast<LPSTR>("win32k.sys"));
-				g_session_global_slots = tmp + (Ubr >= 3037 ? (Ubr >= 3323 ? 0x824F0 : 0x82530) : 0x82538);
+				g_session_global_slots = tmp + (Ubr >= 3037 ? (Ubr >= 3323 ? (Ubr >= 3476 ? 0x82568 : 0x824F0) : 0x82530) : 0x82538);
 			}
 			else {
 				g_session_global_slots = tmp + 0x3110;
