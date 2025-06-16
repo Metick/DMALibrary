@@ -16,7 +16,7 @@ Memory::Memory()
 		LOG("vmm: %p\n", modules.VMM);
 		LOG("ftd: %p\n", modules.FTD3XX);
 		LOG("leech: %p\n", modules.LEECHCORE);
-		THROW("[!] Could not load a library\n");
+		printf("[!] Could not load a library\n");
 	}
 
 	this->key = std::make_shared<c_keys>();
@@ -751,19 +751,21 @@ void Memory::CloseScatterHandle(VMMDLL_SCATTER_HANDLE handle)
 	VMMDLL_Scatter_CloseHandle(handle);
 }
 
-void Memory::AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size)
+bool Memory::AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size)
 {
 	if (!VMMDLL_Scatter_PrepareEx(handle, address, size, static_cast<PBYTE>(buffer), NULL))
 	{
 		LOG("[!] Failed to prepare scatter read at 0x%p\n", address);
+		return false;
 	}
 }
 
-void Memory::AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size)
+bool Memory::AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size)
 {
 	if (!VMMDLL_Scatter_PrepareWrite(handle, address, static_cast<PBYTE>(buffer), size))
 	{
 		LOG("[!] Failed to prepare scatter write at 0x%p\n", address);
+		return false;
 	}
 }
 

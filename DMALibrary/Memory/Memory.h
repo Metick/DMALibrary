@@ -199,15 +199,15 @@ public:
 	 * \param value the value you'll write to the address
 	 */
 	template <typename T>
-	void Write(void* address, T value)
+	bool Write(void* address, T value)
 	{
-		Write(address, &value, sizeof(T));
+		return Write(address, &value, sizeof(T));
 	}
 
 	template <typename T>
-	void Write(uintptr_t address, T value)
+	bool Write(uintptr_t address, T value)
 	{
-		Write(address, &value, sizeof(T));
+		return Write(address, &value, sizeof(T));
 	}
 
 	/**
@@ -304,16 +304,21 @@ public:
 	 * \param buffer the buffer to read/write to
 	 * \param size the size of buffer
 	 */
-	void AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size);
+	bool AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size);
 
 	template <typename T>
-	void AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, T* buffer)
+	bool AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, T* buffer)
 	{
-		AddScatterReadRequest(handle, address, reinterpret_cast<void*>(buffer), sizeof(T));
+		return AddScatterReadRequest(handle, address, reinterpret_cast<void*>(buffer), sizeof(T));
 	}
 		
-	void AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size);
-		
+	bool AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size);
+
+	template <typename T>
+	bool AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, T* buffer)
+	{
+		return AddScatterWriteRequest(handle, address, reinterpret_cast<void*>(buffer), sizeof(T));
+	}
 
 	/**
 	 * \brief Executes all prepared scatter requests, note if you created a scatter handle with a pid
