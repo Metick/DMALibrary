@@ -758,6 +758,7 @@ bool Memory::AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t addres
 		LOG("[!] Failed to prepare scatter read at 0x%p\n", address);
 		return false;
 	}
+	return true;
 }
 
 bool Memory::AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size)
@@ -767,6 +768,7 @@ bool Memory::AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t addre
 		LOG("[!] Failed to prepare scatter write at 0x%p\n", address);
 		return false;
 	}
+	return true;
 }
 
 void Memory::ExecuteReadScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
