@@ -125,7 +125,7 @@ bool Memory::SetFPGA()
 	return true;
 }
 
-bool Memory::Init(std::string process_name, bool memMap, bool debug)
+bool Memory::Init(std::string process_name, bool memMap, bool debug, int pid)
 {
 	if (!DMA_INITIALIZED)
 	{
@@ -203,8 +203,14 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 		LOG("Process already initialized!\n");
 		return true;
 	}
-
-	current_process.PID = GetPidFromName(process_name);
+	if (pid)
+	{
+		current_process.PID = pid;
+	}
+	else
+	{
+		current_process.PID = GetPidFromName(process_name);
+	}
 	if (!current_process.PID)
 	{
 		LOG("[!] Could not get PID from name!\n");
@@ -234,7 +240,6 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 	LOG("PID: %i\n", current_process.PID);
 	LOG("Base Address: 0x%llx\n", current_process.base_address);
 	LOG("Base Size: 0x%llx\n", current_process.base_size);
-
 	PROCESS_INITIALIZED = TRUE;
 
 	return true;
@@ -269,10 +274,20 @@ std::vector<int> Memory::GetPidListFromName(std::string name)
 	return list;
 }
 
-std::vector<std::string> Memory::GetModuleList(std::string process_name)
+std::vector<std::string> Memory::GetModuleList(int pid)
 {
 	std::vector<std::string> list = { };
 	PVMMDLL_MAP_MODULE module_info = NULL;
+	int pid_;
+	if (pid)
+	{
+		pid_ = pid;
+
+	}
+	else
+	{
+		pid_ = current_process.PID;
+	}
 	if (!VMMDLL_Map_GetModuleU(this->vHandle, current_process.PID, &module_info, VMMDLL_MODULE_FLAG_NORMAL))
 	{
 		LOG("[!] Failed to get module list\n");
@@ -288,15 +303,24 @@ std::vector<std::string> Memory::GetModuleList(std::string process_name)
 	return list;
 }
 
-VMMDLL_PROCESS_INFORMATION Memory::GetProcessInformation()
+VMMDLL_PROCESS_INFORMATION Memory::GetProcessInformation(int pid)
 {
 	VMMDLL_PROCESS_INFORMATION info = { };
 	SIZE_T process_information = sizeof(VMMDLL_PROCESS_INFORMATION);
 	ZeroMemory(&info, sizeof(VMMDLL_PROCESS_INFORMATION));
 	info.magic = VMMDLL_PROCESS_INFORMATION_MAGIC;
 	info.wVersion = VMMDLL_PROCESS_INFORMATION_VERSION;
+	int pid_;
+	if (pid)
+	{
+		pid_ = pid;
 
-	if (!VMMDLL_ProcessGetInformation(this->vHandle, current_process.PID, &info, &process_information))
+	}
+	else
+	{
+		pid_ = current_process.PID;
+	}
+	if (!VMMDLL_ProcessGetInformation(this->vHandle, pid_, &info, &process_information))
 	{
 		LOG("[!] Failed to find process information\n");
 		return { };
@@ -333,12 +357,22 @@ size_t Memory::GetBaseDaddy(std::string module_name)
 	return module_info->vaBase;
 }
 
-size_t Memory::GetBaseSize(std::string module_name)
+size_t Memory::GetBaseSize(std::string module_name,int pid)
 {
 	std::wstring str(module_name.begin(), module_name.end());
 
 	PVMMDLL_MAP_MODULEENTRY module_info;
-	auto bResult = VMMDLL_Map_GetModuleFromNameW(this->vHandle, current_process.PID, const_cast<LPWSTR>(str.c_str()), &module_info, VMMDLL_MODULE_FLAG_NORMAL);
+	int pid_;
+	if (pid)
+	{
+		pid_ = pid;
+
+	}
+	else
+	{
+		pid_ = current_process.PID;
+	}
+	auto bResult = VMMDLL_Map_GetModuleFromNameW(this->vHandle, pid_, const_cast<LPWSTR>(str.c_str()), &module_info, VMMDLL_MODULE_FLAG_NORMAL);
 	if (bResult)
 	{
 		LOG("[+] Found Base Size for %s at 0x%p\n", module_name.c_str(), module_info->cbImageSize);
@@ -758,6 +792,7 @@ bool Memory::AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t addres
 		LOG("[!] Failed to prepare scatter read at 0x%p\n", address);
 		return false;
 	}
+	return true;
 }
 
 bool Memory::AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size)
@@ -767,6 +802,7 @@ bool Memory::AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t addre
 		LOG("[!] Failed to prepare scatter write at 0x%p\n", address);
 		return false;
 	}
+	return true;
 }
 
 void Memory::ExecuteReadScatter(VMMDLL_SCATTER_HANDLE handle, int pid)

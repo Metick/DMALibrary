@@ -71,7 +71,7 @@ uint64_t c_shellcode::find_codecave(size_t function_size, const std::string& pro
 std::vector<uint64_t> c_shellcode::find_all_codecave(size_t function_size, const std::string& process_name)
 {
 	std::vector<uint64_t> codecaves = { };
-	std::vector<std::string> module_list = mem.GetModuleList(process_name);
+	std::vector<std::string> module_list = mem.GetModuleList();
 	for (size_t i = 0; i < module_list.size(); i++)
 	{
 		if (std::find(blacklist.begin(), blacklist.end(), module_list[i]) != blacklist.end())
