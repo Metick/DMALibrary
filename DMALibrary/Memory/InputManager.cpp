@@ -134,13 +134,12 @@ bool c_keys::InitKeyboard()
 				return false;
 			}
 
-			uintptr_t gafAsyncKeyState;
-			if (!VMMDLL_PdbSymbolAddress(mem.vHandle, str, const_cast<LPSTR>("gafAsyncKeyState"), &gafAsyncKeyState))
+			if (!VMMDLL_PdbSymbolAddress(mem.vHandle, str, const_cast<LPSTR>("gafAsyncKeyState"), &gafAsyncKeyStateExport))
 			{
 				LOG("failed to find gafAsyncKeyState\n");
 				return false;
 			}
-			LOG("found gafAsyncKeyState at: 0x%p\n", gafAsyncKeyState);
+			LOG("found gafAsyncKeyState at: 0x%p\n", gafAsyncKeyStateExport);
 		}
 		if (gafAsyncKeyStateExport > 0x7FFFFFFFFFFF)
 			return true;
