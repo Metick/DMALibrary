@@ -26,6 +26,9 @@ If you're making use of the CR3 Fix you requires additional .dlls as mentioned i
 Using CR3 fix requires you to have symsrv.dll, dbghelp.dll and info.db
 You can find all these also in the compiled version of ulfrisk.
 
+The latest info.db from the MemProcFS release is downloaded automatically on the first build of the Example project.
+You can of course download one yourself if you wish — if the file already exists in Example's output folder, the automatic download will be skipped.
+
 The project pulls the required headers (leechcore.h, vmmdll.h) and import libraries
 (leechcore.lib, vmm.lib) directly from ufrisk's MemProcFS repository, wired in as a
 git submodule at `extern/MemProcFS`. No precompiled binaries are committed to this repo.

@@ -138,4 +138,8 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <Target Name="FetchInfoDb" BeforeTargets="PrepareForBuild" Condition="!Exists('$(OutDir)info.db')">
+    <MakeDir Directories="$(OutDir)" Condition="!Exists('$(OutDir)')" />
+    <Exec Command="curl -fsSL -o &quot;$(OutDir)info.db&quot; https://github.com/ufrisk/MemProcFS/releases/latest/download/info.db" />
+  </Target>
 </Project>
