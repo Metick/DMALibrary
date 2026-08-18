@@ -4,6 +4,9 @@
 #include "Registry.h"
 #include "Shellcode.h"
 #include "../nt/structs.h"
+#include <atomic>
+#include <memory>
+#include <mutex>
 #include <unordered_map>
 
 class Memory
@@ -53,10 +56,14 @@ private:
 
 	struct ScatterPending
 	{
-		size_t reads = 0;
-		size_t writes = 0;
+		std::atomic<size_t> reads{ 0 };
+		std::atomic<size_t> writes{ 0 };
 	};
-	std::unordered_map<VMMDLL_SCATTER_HANDLE, ScatterPending> scatter_pending;
+	mutable std::mutex scatter_pending_mutex;
+	mutable std::unordered_map<VMMDLL_SCATTER_HANDLE, std::shared_ptr<ScatterPending>> scatter_pending;
+
+	std::shared_ptr<ScatterPending> GetOrCreateScatterPending(VMMDLL_SCATTER_HANDLE handle) const;
+	std::shared_ptr<ScatterPending> FindScatterPending(VMMDLL_SCATTER_HANDLE handle) const;
 
 	/*this->registry_ptr = std::make_shared<c_registry>(*this);
 	this->key_ptr = std::make_shared<c_keys>(*this);*/

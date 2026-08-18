@@ -4,6 +4,24 @@
 #include <thread>
 #include <iostream>
 
+namespace
+{
+	bool IsValidScatterHandle(VMMDLL_SCATTER_HANDLE handle)
+	{
+		return handle && handle != INVALID_HANDLE_VALUE;
+	}
+
+	bool IsValidRemoteAddress(uint64_t address)
+	{
+		return address && address != static_cast<uint64_t>(-1);
+	}
+
+	bool IsValidLocalBuffer(void* buffer)
+	{
+		return buffer && buffer != INVALID_HANDLE_VALUE;
+	}
+}
+
 Memory::Memory()
 {
 	LOG("loading libraries...\n");
@@ -689,9 +707,9 @@ uint64_t Memory::FindSignature(const char* signature, uint64_t range_start, uint
 
 bool Memory::Write(uintptr_t address, void* buffer, size_t size) const
 {
-	if (!address)
+	if (!IsValidRemoteAddress(address) || !IsValidLocalBuffer(buffer))
 	{
-		LOG("[!] Failed to write Memory at NULL\n");
+		LOG("[!] Failed to write Memory at 0x%p\n", address);
 		return false;
 	}
 	if (!VMMDLL_MemWrite(this->vHandle, current_process.PID, address, static_cast<PBYTE>(buffer), size))
@@ -704,9 +722,9 @@ bool Memory::Write(uintptr_t address, void* buffer, size_t size) const
 
 bool Memory::Write(uintptr_t address, void* buffer, size_t size, int pid) const
 {
-	if (!address)
+	if (!IsValidRemoteAddress(address) || !IsValidLocalBuffer(buffer))
 	{
-		LOG("[!] Failed to write Memory at NULL\n");
+		LOG("[!] Failed to write Memory at 0x%p\n", address);
 		return false;
 	}
 	if (!VMMDLL_MemWrite(this->vHandle, pid, address, static_cast<PBYTE>(buffer), size))
@@ -719,9 +737,9 @@ bool Memory::Write(uintptr_t address, void* buffer, size_t size, int pid) const
 
 bool Memory::Read(uintptr_t address, void* buffer, size_t size) const
 {
-	if (!address)
+	if (!IsValidRemoteAddress(address) || !IsValidLocalBuffer(buffer))
 	{
-		LOG("[!] Failed to read Memory at NULL\n");
+		LOG("[!] Failed to read Memory at 0x%p\n", address);
 		return false;
 	}
 	DWORD read_size = 0;
@@ -736,9 +754,9 @@ bool Memory::Read(uintptr_t address, void* buffer, size_t size) const
 
 bool Memory::Read(uintptr_t address, void* buffer, size_t size, int pid) const
 {
-	if (!address)
+	if (!IsValidRemoteAddress(address) || !IsValidLocalBuffer(buffer))
 	{
-		LOG("[!] Failed to read Memory at NULL\n");
+		LOG("[!] Failed to read Memory at 0x%p\n", address);
 		return false;
 	}
 	DWORD read_size = 0;
@@ -750,11 +768,37 @@ bool Memory::Read(uintptr_t address, void* buffer, size_t size, int pid) const
 	return (read_size == size);
 }
 
+std::shared_ptr<Memory::ScatterPending> Memory::GetOrCreateScatterPending(VMMDLL_SCATTER_HANDLE handle) const
+{
+	if (!IsValidScatterHandle(handle))
+		return nullptr;
+
+	std::lock_guard<std::mutex> lock(scatter_pending_mutex);
+	auto& pending = scatter_pending[handle];
+	if (!pending)
+		pending = std::make_shared<ScatterPending>();
+	return pending;
+}
+
+std::shared_ptr<Memory::ScatterPending> Memory::FindScatterPending(VMMDLL_SCATTER_HANDLE handle) const
+{
+	if (!IsValidScatterHandle(handle))
+		return nullptr;
+
+	std::lock_guard<std::mutex> lock(scatter_pending_mutex);
+	const auto it = scatter_pending.find(handle);
+	if (it == scatter_pending.end())
+		return nullptr;
+	return it->second;
+}
+
 VMMDLL_SCATTER_HANDLE Memory::CreateScatterHandle() const
 {
 	const VMMDLL_SCATTER_HANDLE ScatterHandle = VMMDLL_Scatter_Initialize(this->vHandle, current_process.PID, VMMDLL_FLAG_NOCACHE);
 	if (!ScatterHandle)
 		LOG("[!] Failed to create scatter handle\n");
+	else
+		GetOrCreateScatterPending(ScatterHandle);
 	return ScatterHandle;
 }
 
@@ -763,20 +807,28 @@ VMMDLL_SCATTER_HANDLE Memory::CreateScatterHandle(int pid) const
 	const VMMDLL_SCATTER_HANDLE ScatterHandle = VMMDLL_Scatter_Initialize(this->vHandle, pid, VMMDLL_FLAG_NOCACHE);
 	if (!ScatterHandle)
 		LOG("[!] Failed to create scatter handle\n");
+	else
+		GetOrCreateScatterPending(ScatterHandle);
 	return ScatterHandle;
 }
 
 void Memory::CloseScatterHandle(VMMDLL_SCATTER_HANDLE handle)
 {
-	scatter_pending.erase(handle);
+	if (!IsValidScatterHandle(handle))
+		return;
+
+	{
+		std::lock_guard<std::mutex> lock(scatter_pending_mutex);
+		scatter_pending.erase(handle);
+	}
 	VMMDLL_Scatter_CloseHandle(handle);
 }
 
 bool Memory::AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size)
 {
-	if (!address)
+	if (!IsValidScatterHandle(handle) || !IsValidRemoteAddress(address) || !IsValidLocalBuffer(buffer))
 	{
-		LOG("[!] Failed to prepare scatter read at NULL\n");
+		LOG("[!] Failed to prepare scatter read at 0x%p\n", address);
 		return false;
 	}
 	if (!VMMDLL_Scatter_PrepareEx(handle, address, size, static_cast<PBYTE>(buffer), NULL))
@@ -784,15 +836,18 @@ bool Memory::AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t addres
 		LOG("[!] Failed to prepare scatter read at 0x%p\n", address);
 		return false;
 	}
-	scatter_pending[handle].reads++;
+	const auto pending = GetOrCreateScatterPending(handle);
+	if (!pending)
+		return false;
+	pending->reads.fetch_add(1, std::memory_order_relaxed);
 	return true;
 }
 
 bool Memory::AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size)
 {
-	if (!address)
+	if (!IsValidScatterHandle(handle) || !IsValidRemoteAddress(address) || !IsValidLocalBuffer(buffer))
 	{
-		LOG("[!] Failed to prepare scatter write at NULL\n");
+		LOG("[!] Failed to prepare scatter write at 0x%p\n", address);
 		return false;
 	}
 	if (!VMMDLL_Scatter_PrepareWrite(handle, address, static_cast<PBYTE>(buffer), size))
@@ -800,14 +855,17 @@ bool Memory::AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t addre
 		LOG("[!] Failed to prepare scatter write at 0x%p\n", address);
 		return false;
 	}
-	scatter_pending[handle].writes++;
+	const auto pending = GetOrCreateScatterPending(handle);
+	if (!pending)
+		return false;
+	pending->writes.fetch_add(1, std::memory_order_relaxed);
 	return true;
 }
 
 void Memory::ExecuteReadScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
 {
-	auto it = scatter_pending.find(handle);
-	if (it == scatter_pending.end() || it->second.reads == 0)
+	const auto pending = FindScatterPending(handle);
+	if (!pending || pending->reads.load(std::memory_order_relaxed) == 0)
 		return;
 
 	if (pid == 0)
@@ -823,14 +881,14 @@ void Memory::ExecuteReadScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
 		LOG("[-] Failed to clear Scatter\n");
 	}
 
-	it->second.reads = 0;
-	it->second.writes = 0;
+	pending->reads.store(0, std::memory_order_relaxed);
+	pending->writes.store(0, std::memory_order_relaxed);
 }
 
 void Memory::ExecuteWriteScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
 {
-	auto it = scatter_pending.find(handle);
-	if (it == scatter_pending.end() || it->second.writes == 0)
+	const auto pending = FindScatterPending(handle);
+	if (!pending || pending->writes.load(std::memory_order_relaxed) == 0)
 		return;
 
 	if (pid == 0)
@@ -846,6 +904,6 @@ void Memory::ExecuteWriteScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
 		LOG("[-] Failed to clear Scatter\n");
 	}
 
-	it->second.reads = 0;
-	it->second.writes = 0;
+	pending->reads.store(0, std::memory_order_relaxed);
+	pending->writes.store(0, std::memory_order_relaxed);
 }
