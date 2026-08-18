@@ -4,6 +4,7 @@
 #include "Registry.h"
 #include "Shellcode.h"
 #include "../nt/structs.h"
+#include <unordered_map>
 
 class Memory
 {
@@ -49,6 +50,13 @@ private:
 	std::shared_ptr<c_keys> key;
 	c_registry registry;
 	c_shellcode shellcode;
+
+	struct ScatterPending
+	{
+		size_t reads = 0;
+		size_t writes = 0;
+	};
+	std::unordered_map<VMMDLL_SCATTER_HANDLE, ScatterPending> scatter_pending;
 
 	/*this->registry_ptr = std::make_shared<c_registry>(*this);
 	this->key_ptr = std::make_shared<c_keys>(*this);*/
@@ -321,8 +329,9 @@ public:
 	}
 
 	/**
-	 * \brief Executes all prepared scatter requests, note if you created a scatter handle with a pid
-	 * you'll need to specify the pid in the execute function. so we can clear the scatters from the handle.
+	 * \brief Executes all prepared scatter requests. No-ops if no matching requests were added.
+	 * If you created a scatter handle with a pid you'll need to specify the pid in the execute function
+	 * so we can clear the scatters from the handle.
 	 * \param handle 
 	 * \param pid 
 	 */

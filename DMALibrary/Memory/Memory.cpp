@@ -748,6 +748,7 @@ VMMDLL_SCATTER_HANDLE Memory::CreateScatterHandle(int pid) const
 
 void Memory::CloseScatterHandle(VMMDLL_SCATTER_HANDLE handle)
 {
+	scatter_pending.erase(handle);
 	VMMDLL_Scatter_CloseHandle(handle);
 }
 
@@ -758,6 +759,7 @@ bool Memory::AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t addres
 		LOG("[!] Failed to prepare scatter read at 0x%p\n", address);
 		return false;
 	}
+	scatter_pending[handle].reads++;
 	return true;
 }
 
@@ -768,11 +770,16 @@ bool Memory::AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t addre
 		LOG("[!] Failed to prepare scatter write at 0x%p\n", address);
 		return false;
 	}
+	scatter_pending[handle].writes++;
 	return true;
 }
 
 void Memory::ExecuteReadScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
 {
+	auto it = scatter_pending.find(handle);
+	if (it == scatter_pending.end() || it->second.reads == 0)
+		return;
+
 	if (pid == 0)
 		pid = current_process.PID;
 
@@ -785,10 +792,17 @@ void Memory::ExecuteReadScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
 	{
 		LOG("[-] Failed to clear Scatter\n");
 	}
+
+	it->second.reads = 0;
+	it->second.writes = 0;
 }
 
 void Memory::ExecuteWriteScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
 {
+	auto it = scatter_pending.find(handle);
+	if (it == scatter_pending.end() || it->second.writes == 0)
+		return;
+
 	if (pid == 0)
 		pid = current_process.PID;
 
@@ -801,4 +815,7 @@ void Memory::ExecuteWriteScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
 	{
 		LOG("[-] Failed to clear Scatter\n");
 	}
+
+	it->second.reads = 0;
+	it->second.writes = 0;
 }
