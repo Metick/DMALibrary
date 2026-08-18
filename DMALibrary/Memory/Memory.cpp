@@ -689,6 +689,11 @@ uint64_t Memory::FindSignature(const char* signature, uint64_t range_start, uint
 
 bool Memory::Write(uintptr_t address, void* buffer, size_t size) const
 {
+	if (!address)
+	{
+		LOG("[!] Failed to write Memory at NULL\n");
+		return false;
+	}
 	if (!VMMDLL_MemWrite(this->vHandle, current_process.PID, address, static_cast<PBYTE>(buffer), size))
 	{
 		LOG("[!] Failed to write Memory at 0x%p\n", address);
@@ -699,6 +704,11 @@ bool Memory::Write(uintptr_t address, void* buffer, size_t size) const
 
 bool Memory::Write(uintptr_t address, void* buffer, size_t size, int pid) const
 {
+	if (!address)
+	{
+		LOG("[!] Failed to write Memory at NULL\n");
+		return false;
+	}
 	if (!VMMDLL_MemWrite(this->vHandle, pid, address, static_cast<PBYTE>(buffer), size))
 	{
 		LOG("[!] Failed to write Memory at 0x%p\n", address);
@@ -709,6 +719,11 @@ bool Memory::Write(uintptr_t address, void* buffer, size_t size, int pid) const
 
 bool Memory::Read(uintptr_t address, void* buffer, size_t size) const
 {
+	if (!address)
+	{
+		LOG("[!] Failed to read Memory at NULL\n");
+		return false;
+	}
 	DWORD read_size = 0;
 	if (!VMMDLL_MemReadEx(this->vHandle, current_process.PID, address, static_cast<PBYTE>(buffer), size, &read_size, VMMDLL_FLAG_NOCACHE))
 	{
@@ -721,6 +736,11 @@ bool Memory::Read(uintptr_t address, void* buffer, size_t size) const
 
 bool Memory::Read(uintptr_t address, void* buffer, size_t size, int pid) const
 {
+	if (!address)
+	{
+		LOG("[!] Failed to read Memory at NULL\n");
+		return false;
+	}
 	DWORD read_size = 0;
 	if (!VMMDLL_MemReadEx(this->vHandle, pid, address, static_cast<PBYTE>(buffer), size, &read_size, VMMDLL_FLAG_NOCACHE))
 	{
@@ -754,6 +774,11 @@ void Memory::CloseScatterHandle(VMMDLL_SCATTER_HANDLE handle)
 
 bool Memory::AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size)
 {
+	if (!address)
+	{
+		LOG("[!] Failed to prepare scatter read at NULL\n");
+		return false;
+	}
 	if (!VMMDLL_Scatter_PrepareEx(handle, address, size, static_cast<PBYTE>(buffer), NULL))
 	{
 		LOG("[!] Failed to prepare scatter read at 0x%p\n", address);
@@ -765,6 +790,11 @@ bool Memory::AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t addres
 
 bool Memory::AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size)
 {
+	if (!address)
+	{
+		LOG("[!] Failed to prepare scatter write at NULL\n");
+		return false;
+	}
 	if (!VMMDLL_Scatter_PrepareWrite(handle, address, static_cast<PBYTE>(buffer), size))
 	{
 		LOG("[!] Failed to prepare scatter write at 0x%p\n", address);
