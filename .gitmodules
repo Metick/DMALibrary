@@ -1,0 +1,3 @@
+[submodule "extern/MemProcFS"]
+	path = extern/MemProcFS
+	url = https://github.com/ufrisk/MemProcFS.git

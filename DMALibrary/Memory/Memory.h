@@ -4,6 +4,10 @@
 #include "Registry.h"
 #include "Shellcode.h"
 #include "../nt/structs.h"
+#include <atomic>
+#include <memory>
+#include <mutex>
+#include <unordered_map>
 
 class Memory
 {
@@ -49,6 +53,17 @@ private:
 	std::shared_ptr<c_keys> key;
 	c_registry registry;
 	c_shellcode shellcode;
+
+	struct ScatterPending
+	{
+		std::atomic<size_t> reads{ 0 };
+		std::atomic<size_t> writes{ 0 };
+	};
+	mutable std::mutex scatter_pending_mutex;
+	mutable std::unordered_map<VMMDLL_SCATTER_HANDLE, std::shared_ptr<ScatterPending>> scatter_pending;
+
+	std::shared_ptr<ScatterPending> GetOrCreateScatterPending(VMMDLL_SCATTER_HANDLE handle) const;
+	std::shared_ptr<ScatterPending> FindScatterPending(VMMDLL_SCATTER_HANDLE handle) const;
 
 	/*this->registry_ptr = std::make_shared<c_registry>(*this);
 	this->key_ptr = std::make_shared<c_keys>(*this);*/
@@ -199,15 +214,15 @@ public:
 	 * \param value the value you'll write to the address
 	 */
 	template <typename T>
-	void Write(void* address, T value)
+	bool Write(void* address, T value)
 	{
-		Write(address, &value, sizeof(T));
+		return Write(address, &value, sizeof(T));
 	}
 
 	template <typename T>
-	void Write(uintptr_t address, T value)
+	bool Write(uintptr_t address, T value)
 	{
-		Write(address, &value, sizeof(T));
+		return Write(address, &value, sizeof(T));
 	}
 
 	/**
@@ -304,20 +319,26 @@ public:
 	 * \param buffer the buffer to read/write to
 	 * \param size the size of buffer
 	 */
-	void AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size);
+	bool AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size);
 
 	template <typename T>
-	void AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, T* buffer)
+	bool AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, T* buffer)
 	{
-		AddScatterReadRequest(handle, address, reinterpret_cast<void*>(buffer), sizeof(T));
+		return AddScatterReadRequest(handle, address, reinterpret_cast<void*>(buffer), sizeof(T));
 	}
 		
-	void AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size);
-		
+	bool AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size);
+
+	template <typename T>
+	bool AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, T* buffer)
+	{
+		return AddScatterWriteRequest(handle, address, reinterpret_cast<void*>(buffer), sizeof(T));
+	}
 
 	/**
-	 * \brief Executes all prepared scatter requests, note if you created a scatter handle with a pid
-	 * you'll need to specify the pid in the execute function. so we can clear the scatters from the handle.
+	 * \brief Executes all prepared scatter requests. No-ops if no matching requests were added.
+	 * If you created a scatter handle with a pid you'll need to specify the pid in the execute function
+	 * so we can clear the scatters from the handle.
 	 * \param handle 
 	 * \param pid 
 	 */

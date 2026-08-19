@@ -26,6 +26,9 @@
 *.a
 *.lib
 
+# Auto-fetched at build time (see Example.vcxproj FetchInfoDb target)
+info.db
+
 # Executables
 *.exe
 *.out

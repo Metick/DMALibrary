@@ -8,7 +8,7 @@
 #define PCH_H
 
 //DMA
-#include "libs/vmmdll.h"
+#include <vmmdll.h>
 
 // add headers that you want to pre-compile here
 #include "framework.h"

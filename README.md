@@ -26,14 +26,26 @@ If you're making use of the CR3 Fix you requires additional .dlls as mentioned i
 Using CR3 fix requires you to have symsrv.dll, dbghelp.dll and info.db
 You can find all these also in the compiled version of ulfrisk.
 
-The project requires the leechcore.lib and vmm.lib libraries in the libs/ folder. I did not add the precompiled libraries for security purposes. 
-You can get the files from 
-https://github.com/ufrisk/LeechCore
-and
-https://github.com/ufrisk/MemProcFS/tree/master/vmm
+The latest info.db from the MemProcFS release is downloaded automatically on the first build of the Example project.
+You can of course download one yourself if you wish — if the file already exists in Example's output folder, the automatic download will be skipped.
 
-and compiled from if you are lazy.
-https://github.com/ufrisk/MemProcFS/tree/master/includes/lib32
+The project pulls the required headers (leechcore.h, vmmdll.h) and import libraries
+(leechcore.lib, vmm.lib) directly from ufrisk's MemProcFS repository, wired in as a
+git submodule at `extern/MemProcFS`. No precompiled binaries are committed to this repo.
+
+Clone with submodules:
+
+```
+git clone --recurse-submodules https://github.com/dactDMA/DMALibrary
+```
+
+or, if you already cloned without submodules:
+
+```
+git submodule update --init
+```
+
+
 
 Also special thanks to ufrisk for the libraries i used in this project.
 
